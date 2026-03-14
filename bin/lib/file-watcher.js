@@ -1,14 +1,19 @@
 import chokidar from 'chokidar'
+import { basename } from 'node:path'
 import { readTaskFile } from './task-parser.js'
 
 export function createFileWatcher(tasksDir, roleManager, logger) {
-  const watcher = chokidar.watch(`${tasksDir}/*.md`, {
+  // Watch the directory, not a glob — chokidar 4 does not fire initial 'add'
+  // events for existing files when given a glob pattern, but does when given a directory.
+  const watcher = chokidar.watch(tasksDir, {
     ignoreInitial: false,
     persistent: true,
     awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 50 }
   })
 
   function handleTaskFile(filepath) {
+    const name = basename(filepath)
+    if (!name.endsWith('.md') || name.startsWith('.')) return
     const task = readTaskFile(filepath)
     if (!task) return
 
