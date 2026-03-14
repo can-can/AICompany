@@ -7,7 +7,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 export function createWebServer(roleManager, taskStore, logger, { port = 4000 } = {}) {
   const app = express()
 
-  app.use(express.static(join(__dirname, '../dashboard')))
+  // Serve the public homepage at the root
+  app.use(express.static(join(__dirname, '../../public')))
+
+  // Serve the internal dashboard under /dashboard/
+  app.use('/dashboard', express.static(join(__dirname, '../dashboard')))
 
   app.get('/api/status', (req, res) => {
     res.json({ roles: roleManager.getStatus() })
