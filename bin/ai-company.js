@@ -322,18 +322,33 @@ async function cmdInit(args) {
   const targetDir = resolve(args[0] || process.cwd())
   mkdirSync(targetDir, { recursive: true })
 
-  const rl = createInterface({ input: process.stdin, output: process.stdout })
-  const iter = rl[Symbol.asyncIterator]()
+  const isTTY = process.stdin.isTTY ?? false
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: isTTY,
+  })
+  // In non-TTY mode (piped input), rl.question() drops pending Promises once stdin
+  // reaches EOF. Buffer all lines first so sequential question() calls work reliably.
+  let lineBuffer = null
+  if (!isTTY) {
+    lineBuffer = []
+    await new Promise(resolve => {
+      rl.on('line', l => lineBuffer.push(l))
+      rl.once('close', resolve)
+    })
+  }
+  const question = lineBuffer
+    ? (q) => { process.stdout.write(q); return Promise.resolve(lineBuffer.shift() ?? '') }
+    : (q) => rl.question(q)
   const defaultName = basename(targetDir)
-  process.stdout.write(`Project name (${defaultName}): `)
-  const name = ((await iter.next()).value ?? '').trim() || defaultName
-  process.stdout.write('Goal (one sentence): ')
-  const goal = ((await iter.next()).value ?? '').trim() || 'An AI company project'
-  process.stdout.write('Roles (pm,engineer,qa): ')
-  const rolesInput = ((await iter.next()).value ?? '').trim() || 'pm,engineer,qa'
+  const name = (await question(`Project name (${defaultName}): `)).trim() || defaultName
+  const goal = (await question('Goal (one sentence): ')).trim() || 'An AI company project'
+  const rolesInput = (await question('Roles (pm,engineer,qa): ')).trim() || 'pm,engineer,qa'
   rl.close()
 
   const roles = rolesInput.split(',').map(r => r.trim()).filter(Boolean)
+  if (roles.length === 0) roles.push('pm', 'engineer', 'qa')
   const packageRoot = join(__dirname, '..')
 
   // Build workflow diagram from roles
@@ -346,9 +361,9 @@ async function cmdInit(args) {
   // company.md from template
   const templateContent = readFileSync(join(packageRoot, 'templates', 'company.md'), 'utf8')
   const companyMd = templateContent
-    .replace('{{name}}', name)
-    .replace('{{goal}}', goal)
-    .replace('{{workflow}}', workflow)
+    .replaceAll('{{name}}', name)
+    .replaceAll('{{goal}}', goal)
+    .replaceAll('{{workflow}}', workflow)
   writeFileSync(join(targetDir, 'company.md'), companyMd)
   console.log('  ✓ company.md')
 
