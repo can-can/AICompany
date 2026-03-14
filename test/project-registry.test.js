@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -65,4 +65,10 @@ test('resolveProject finds project when cwd is subdirectory', () => {
 test('resolveProject returns null when not inside any project', () => {
   addProject('MyApp', '/tmp/myapp')
   assert.equal(resolveProject('/tmp/other'), null)
+})
+
+test('removeProject removes by path', () => {
+  addProject('MyApp', '/tmp/myapp')
+  removeProject('/tmp/myapp')
+  assert.equal(readRegistry().length, 0)
 })
