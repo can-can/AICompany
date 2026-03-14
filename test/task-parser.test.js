@@ -132,3 +132,13 @@ test('getNextId returns 001 when tasks dir is empty and no counter', (t) => {
   const id = getNextId(dir)
   assert.equal(id, '001')
 })
+
+test('getNextId returns 001 when counter file contains non-numeric value', (t) => {
+  const dir = join(tmpdir(), `tasks-${Date.now()}`)
+  mkdirSync(dir)
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+
+  writeFileSync(join(dir, '.next-id'), 'notanumber')
+  const id = getNextId(dir)
+  assert.equal(id, '001')
+})
