@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const PRIORITY_MAP = { high: 0, medium: 1, low: 2 }
@@ -59,4 +59,30 @@ export function buildTaskList(tasksDir) {
     return a.created.localeCompare(b.created)
   })
   return tasks
+}
+
+export function getNextId(tasksDir) {
+  const counterFile = join(tasksDir, '.next-id')
+  let next
+
+  if (existsSync(counterFile)) {
+    next = parseInt(readFileSync(counterFile, 'utf8').trim(), 10)
+    if (isNaN(next)) next = 1
+  } else {
+    // Bootstrap: scan existing task files for highest numeric id
+    let max = 0
+    try {
+      const files = readdirSync(tasksDir).filter(f => f.endsWith('.md') && !f.startsWith('.'))
+      for (const f of files) {
+        const task = readTaskFile(join(tasksDir, f))
+        if (!task?.id) continue
+        const n = parseInt(task.id, 10)
+        if (!isNaN(n) && n > max) max = n
+      }
+    } catch {}
+    next = max + 1
+  }
+
+  writeFileSync(counterFile, String(next + 1))
+  return String(next).padStart(3, '0')
 }

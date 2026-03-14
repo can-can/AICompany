@@ -2,7 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { readTaskFile, buildTaskList, priorityOrder } from '../bin/lib/task-parser.js'
+import { tmpdir } from 'node:os'
+import { readTaskFile, buildTaskList, priorityOrder, getNextId } from '../bin/lib/task-parser.js'
 
 const TMP = '/tmp/ai-company-test-tasks'
 
@@ -88,4 +89,46 @@ updated: 2026-03-14
   const engineerTasks = tasks.filter(t => t.to === 'engineer' && t.status === 'pending')
   assert.equal(engineerTasks[0].priority, 'high')  // high before medium
   assert.equal(engineerTasks[1].priority, 'medium')
+})
+
+test('getNextId bootstraps from existing task files when no counter file', (t) => {
+  const dir = join(tmpdir(), `tasks-${Date.now()}`)
+  mkdirSync(dir)
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+
+  // Write a task file with id 003
+  writeFileSync(join(dir, '003-some-task.md'), `---\nid: "003"\ntitle: "Task"\nstatus: pending\n---\n`)
+
+  const id = getNextId(dir)
+  assert.equal(id, '004')
+})
+
+test('getNextId uses counter file when present', (t) => {
+  const dir = join(tmpdir(), `tasks-${Date.now()}`)
+  mkdirSync(dir)
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+
+  writeFileSync(join(dir, '.next-id'), '7')
+  const id = getNextId(dir)
+  assert.equal(id, '007')
+})
+
+test('getNextId increments counter file after call', (t) => {
+  const dir = join(tmpdir(), `tasks-${Date.now()}`)
+  mkdirSync(dir)
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+
+  writeFileSync(join(dir, '.next-id'), '5')
+  getNextId(dir)  // consume 005
+  const id2 = getNextId(dir)  // should be 006
+  assert.equal(id2, '006')
+})
+
+test('getNextId returns 001 when tasks dir is empty and no counter', (t) => {
+  const dir = join(tmpdir(), `tasks-${Date.now()}`)
+  mkdirSync(dir)
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+
+  const id = getNextId(dir)
+  assert.equal(id, '001')
 })
