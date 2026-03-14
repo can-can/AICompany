@@ -337,7 +337,7 @@ if (!command || !commands[command]) {
   console.log(`Usage: ai-company <command> [args]
 
 Hub:        start | stop | health
-Projects:   init [dir] | register [dir] | unregister [dir] | list
+Projects:   register [dir] | unregister [dir] | list
 Tasks:      create <role> <title> | tasks [role] | send <role> "msg" | next-id | status
 
 Options:    --project <name>  (target a specific project from any directory)`)
