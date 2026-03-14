@@ -314,12 +314,93 @@ async function cmdSend(args, flags) {
   console.log(`Message sent to ${role} via ${basename(taskFile)}`)
 }
 
+async function cmdInit(args) {
+  const { createInterface } = await import('node:readline/promises')
+  const { addProject, getPidPath } = await reg()
+  const pidPath = getPidPath()
+
+  const targetDir = resolve(args[0] || process.cwd())
+  mkdirSync(targetDir, { recursive: true })
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout })
+  const iter = rl[Symbol.asyncIterator]()
+  const defaultName = basename(targetDir)
+  process.stdout.write(`Project name (${defaultName}): `)
+  const name = ((await iter.next()).value ?? '').trim() || defaultName
+  process.stdout.write('Goal (one sentence): ')
+  const goal = ((await iter.next()).value ?? '').trim() || 'An AI company project'
+  process.stdout.write('Roles (pm,engineer,qa): ')
+  const rolesInput = ((await iter.next()).value ?? '').trim() || 'pm,engineer,qa'
+  rl.close()
+
+  const roles = rolesInput.split(',').map(r => r.trim()).filter(Boolean)
+  const packageRoot = join(__dirname, '..')
+
+  // Build workflow diagram from roles
+  const workflow = roles.length <= 3
+    ? `human → ${roles.join(' → ')}`
+    : `human → ${roles[0]} → ${roles.slice(1).join(', ')}`
+
+  console.log('\nCreating project structure...')
+
+  // company.md from template
+  const templateContent = readFileSync(join(packageRoot, 'templates', 'company.md'), 'utf8')
+  const companyMd = templateContent
+    .replace('{{name}}', name)
+    .replace('{{goal}}', goal)
+    .replace('{{workflow}}', workflow)
+  writeFileSync(join(targetDir, 'company.md'), companyMd)
+  console.log('  ✓ company.md')
+
+  mkdirSync(join(targetDir, 'tasks'), { recursive: true })
+  mkdirSync(join(targetDir, 'logs'), { recursive: true })
+
+  // Role dirs
+  for (const role of roles) {
+    const roleDir = join(targetDir, 'roles', role)
+    mkdirSync(roleDir, { recursive: true })
+
+    const roleTemplate = join(packageRoot, 'roles', `${role}.md`)
+    if (existsSync(roleTemplate)) {
+      copyFileSync(roleTemplate, join(roleDir, 'CLAUDE.md'))
+    } else {
+      writeFileSync(join(roleDir, 'CLAUDE.md'), `# ${role}\n\nYou are the ${role}. Complete tasks assigned to you.\n`)
+    }
+
+    const memTemplate = join(packageRoot, 'memories', `${role}.md`)
+    if (existsSync(memTemplate)) {
+      copyFileSync(memTemplate, join(roleDir, 'memory.md'))
+    } else {
+      writeFileSync(join(roleDir, 'memory.md'), `# ${role} Memory\n\n## Handoff Notes\n\n`)
+    }
+
+    console.log(`  ✓ roles/${role}/CLAUDE.md + memory.md`)
+  }
+
+  console.log('\nRegistering project...')
+  addProject(name, targetDir)
+  console.log(`  ✓ Added to ~/.ai-company/projects.json`)
+
+  const hubRunning = existsSync(pidPath) && (() => {
+    try { return isRunning(parseInt(readFileSync(pidPath, 'utf8').trim(), 10)) } catch { return false }
+  })()
+
+  if (hubRunning) {
+    console.log('\nHub is running — project loaded automatically.')
+  } else {
+    console.log('\nStart the hub with: ai-company start')
+  }
+  console.log('Dashboard: http://localhost:4000')
+  console.log(`\nNext: ai-company create ${roles[0] ?? 'pm'} "your first goal"`)
+}
+
 // ── Dispatch ──────────────────────────────────────────────────────────────────
 
 const [,, command, ...rest] = process.argv
 const { args, flags } = parseArgs(rest)
 
 const commands = {
+  init:       () => cmdInit(args),
   start:      () => cmdStart(),
   stop:       () => cmdStop(),
   health:     () => cmdHealth(),
@@ -337,7 +418,7 @@ if (!command || !commands[command]) {
   console.log(`Usage: ai-company <command> [args]
 
 Hub:        start | stop | health
-Projects:   register [dir] | unregister [dir] | list
+Projects:   init [dir] | register [dir] | unregister [dir] | list
 Tasks:      create <role> <title> | tasks [role] | send <role> "msg" | next-id | status
 
 Options:    --project <name>  (target a specific project from any directory)`)

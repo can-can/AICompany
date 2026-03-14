@@ -1,0 +1,37 @@
+# Company Memory
+
+Shared context for all roles.
+
+## Project
+
+{{name}} — {{goal}}
+
+## Workflow
+
+```
+{{workflow}}
+```
+
+## Company Conventions
+
+- Tasks live in `tasks/` — single source of truth
+- One file per task: `<id>-<slug>.md`
+- Tasks use YAML frontmatter: id, from, to, owner, status, priority, created, updated, title
+- Status flow: `pending → in_progress → done` (or `rejected`)
+- The hub watches `tasks/` and auto-routes work to roles
+
+## Task ID Generation
+
+**Always** use the CLI to get a unique task ID — never invent one yourself:
+
+```bash
+ai-company next-id   # prints e.g. "004", reserves it atomically
+```
+
+Call it **once per task** you plan to create. If creating 3 tasks, call it 3 times and collect the IDs before writing any files.
+
+## Task Flow
+
+1. Creator sets `to: <role>`, `from: <me>`, `status: pending`
+2. Assignee picks up: `owner: <me>`, `status: in_progress`
+3. Assignee finishes: `status: done` (or `rejected` with reason)
