@@ -116,7 +116,15 @@ async function cmdStop() {
   const pid = parseInt(readFileSync(pidPath, 'utf8').trim(), 10)
   if (isRunning(pid)) {
     process.kill(pid, 'SIGTERM')
-    unlinkSync(pidPath)
+    // Poll until process exits (up to 3s), then clean up PID file
+    const deadline = Date.now() + 3000
+    while (Date.now() < deadline) {
+      try { process.kill(pid, 0) } catch { break } // process gone
+      // Brief pause — synchronous spin is acceptable for a CLI command
+      const until = Date.now() + 100
+      while (Date.now() < until) {} // spin 100ms
+    }
+    try { unlinkSync(pidPath) } catch {}
     console.log(`Server stopped (PID ${pid}).`)
   } else {
     unlinkSync(pidPath)
@@ -172,10 +180,16 @@ async function cmdRegister(args) {
 }
 
 async function cmdUnregister(args) {
-  const { removeProject } = await reg()
-  const nameOrDir = args[0] || process.cwd()
-  removeProject(nameOrDir)
-  console.log(`Unregistered: ${nameOrDir}`)
+  const dir = resolve(args[0] ?? '.')
+  const { removeProject, readRegistry } = await reg()
+  const before = readRegistry().length
+  removeProject(dir)
+  const after = readRegistry().length
+  if (after === before) {
+    console.error(`Error: No registered project found at path: ${dir}`)
+    process.exit(1)
+  }
+  console.log(`Unregistered: ${dir}`)
 }
 
 // ── Task management ───────────────────────────────────────────────────────────

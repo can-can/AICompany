@@ -1,0 +1,22 @@
+# Exclude live runtime state
+roles/.sessions.json
+roles/pm/
+roles/engineer/
+roles/qa/
+roles/ceo/
+roles/designer/
+roles/ops/
+roles/marketing/
+roles/sales/
+tasks/
+logs/
+
+# Exclude legacy bash scripts (superseded by bin/ai-company.js)
+bin/company
+bin/lib/parse-frontmatter.sh
+bin/lib/tmux-helpers.sh
+
+# Exclude development/test artifacts
+test/
+docs/
+.superpowers/

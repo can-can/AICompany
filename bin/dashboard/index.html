@@ -166,7 +166,7 @@
         banner.style.display = 'block'
         banner.innerHTML = '⚠ Waiting for human input: ' + waiting.map(w =>
           `<strong>${esc(w.project)} › ${esc(w.role)}</strong>${w.task ? ` on #${esc(w.task.id)} "${esc(w.task.title)}"` : ''}`
-        ).join(', ') + ` — run <code>ai-company send ${esc(waiting[0].role)} "your message"</code>`
+        ).join(', ') + ` — run <code>ai-company send ${esc(waiting[0].role)} "your message" --project ${esc(waiting[0].project)}</code>`
       } else {
         banner.style.display = 'none'
       }
