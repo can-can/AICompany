@@ -29,35 +29,40 @@ async function activateProject({ name, path }) {
     return
   }
 
-  const roles = loadRoles(path)
-  const logger = createLogger()
-  const sessionsPath = join(path, 'roles', '.sessions.json')
-  const tasksDir = join(path, 'tasks')
-  const logsDir = join(path, 'logs')
+  try {
+    const roles = loadRoles(path)
+    const logger = createLogger()
+    const sessionsPath = join(path, 'roles', '.sessions.json')
+    const tasksDir = join(path, 'tasks')
+    const logsDir = join(path, 'logs')
 
-  mkdirSync(tasksDir, { recursive: true })
-  mkdirSync(logsDir, { recursive: true })
+    mkdirSync(tasksDir, { recursive: true })
+    mkdirSync(logsDir, { recursive: true })
 
-  // Note: spec says "share one SDKRunner" but the current createSdkRunner API takes projectDir
-  // and sessionsPath at construction time, making it project-scoped by design. Per-project
-  // instances are used here; refactoring to a truly shared runner is future work.
-  const sdkRunner = createSdkRunner(path, sessionsPath)
-  const roleManager = createRoleManager(roles, sdkRunner, readTaskFile, logger)
+    // Note: spec says "share one SDKRunner" but the current createSdkRunner API takes projectDir
+    // and sessionsPath at construction time, making it project-scoped by design. Per-project
+    // instances are used here; refactoring to a truly shared runner is future work.
+    const sdkRunner = createSdkRunner(path, sessionsPath)
+    const roleManager = createRoleManager(roles, sdkRunner, readTaskFile, logger)
 
-  if (existsSync(sessionsPath)) {
-    try {
-      const sessions = JSON.parse(readFileSync(sessionsPath, 'utf8'))
-      roleManager.loadSessions(sessions)
-      logger.add('info', null, `loaded sessions for: ${Object.keys(sessions).join(', ')}`)
-    } catch {}
+    if (existsSync(sessionsPath)) {
+      try {
+        const sessions = JSON.parse(readFileSync(sessionsPath, 'utf8'))
+        roleManager.loadSessions(sessions)
+        logger.add('info', null, `loaded sessions for: ${Object.keys(sessions).join(', ')}`)
+      } catch {}
+    }
+
+    const taskStore = { getAll: () => buildTaskList(tasksDir) }
+    const watcher = createFileWatcher(tasksDir, roleManager, logger)
+
+    activeProjects.set(name, { name, path, status: 'active', logger, roleManager, taskStore, watcher })
+    logger.add('info', null, `project '${name}' activated`)
+    console.log(`[hub] Activated project: ${name}`)
+  } catch (err) {
+    console.error(`[hub] Failed to activate project '${name}': ${err.message}`)
+    activeProjects.set(name, { name, path, status: 'offline' })
   }
-
-  const taskStore = { getAll: () => buildTaskList(tasksDir) }
-  const watcher = createFileWatcher(tasksDir, roleManager, logger)
-
-  activeProjects.set(name, { name, path, status: 'active', logger, roleManager, taskStore, watcher })
-  logger.add('info', null, `project '${name}' activated`)
-  console.log(`[hub] Activated project: ${name}`)
 }
 
 function deactivateProject(name) {
@@ -97,6 +102,8 @@ const projectStore = {
   getProject:  (name) => activeProjects.get(name) ?? null
 }
 
+let syncPromise = Promise.resolve()
+
 async function main() {
   const registryDir = getRegistryDir()
   const registryPath = getRegistryPath()
@@ -120,7 +127,7 @@ async function main() {
   registryWatcher.on('all', (event, filepath) => {
     if ((event === 'add' || event === 'change') && filepath === registryPath) {
       console.log('[hub] Registry changed — syncing projects...')
-      syncRegistry().catch(err => console.error('[hub] sync error:', err.message))
+      syncPromise = syncPromise.then(() => syncRegistry()).catch(err => console.error('[hub] sync error:', err.message))
     }
   })
 
@@ -133,7 +140,7 @@ async function main() {
   function shutdown() {
     console.log('[hub] shutting down')
     registryWatcher.close()
-    for (const [name] of activeProjects) deactivateProject(name)
+    for (const name of [...activeProjects.keys()]) deactivateProject(name)
     webServer.close()
     try { unlinkSync(pidPath) } catch {}
     process.exit(0)
