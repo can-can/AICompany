@@ -51,7 +51,8 @@ export function createWebServer(projectStore, { port = 4000 } = {}) {
   app.get('/api/logs', (req, res) => {
     const project = requireProject(req, res)
     if (!project) return
-    const limit = parseInt(req.query.limit ?? '50', 10)
+    const rawLimit = parseInt(req.query.limit ?? '50', 10)
+    const limit = isNaN(rawLimit) ? 50 : rawLimit
     res.json(project.logger.get(limit))
   })
 

@@ -80,6 +80,16 @@ test('GET /api/status for unknown project returns 404', async (t) => {
   assert.equal(status, 404)
 })
 
+test('GET /api/status for offline project returns 503', async (t) => {
+  const offlineProject = { ...makeProject('Offline'), status: 'offline' }
+  const store = makeProjectStore([offlineProject])
+  const server = createWebServer(store, { port: 0 })
+  t.after(() => new Promise(r => server.close(r)))
+
+  const { status } = await request(server, '/api/status?project=Offline')
+  assert.equal(status, 503)
+})
+
 test('GET /api/tasks?project=Alpha returns tasks', async (t) => {
   const store = makeProjectStore([makeProject('Alpha')])
   const server = createWebServer(store, { port: 0 })
@@ -100,6 +110,19 @@ test('GET /api/logs?project=Alpha returns logs', async (t) => {
   assert.equal(status, 200)
   assert.equal(body.length, 1)
   assert.equal(body[0].message, 'log for Alpha')
+})
+
+test('GET /api/logs?limit=1 returns at most 1 entry', async (t) => {
+  const proj = makeProject('Alpha')
+  // makeProject already added 1 log entry; add a second so limit is meaningful
+  proj.logger.add('info', 'pm', 'second log for Alpha')
+  const store = makeProjectStore([proj])
+  const server = createWebServer(store, { port: 0 })
+  t.after(() => new Promise(r => server.close(r)))
+
+  const { status, body } = await request(server, '/api/logs?project=Alpha&limit=1')
+  assert.equal(status, 200)
+  assert.equal(body.length, 1)
 })
 
 test('POST /api/next-id?project=Alpha returns reserved ID', async (t) => {
