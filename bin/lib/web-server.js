@@ -22,5 +22,9 @@ export function createWebServer(roleManager, taskStore, logger, { port = 4000 } 
   })
 
   const server = app.listen(port)
+  server.on('error', (err) => {
+    console.error(`Web server error: ${err.message}`)
+    process.exit(1)
+  })
   return server
 }
