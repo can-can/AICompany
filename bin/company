@@ -165,20 +165,30 @@ cmd_tasks() {
 }
 
 cmd_next_id() {
-  local max=0
-  for f in "$TASKS_DIR"/*.md; do
-    [ -f "$f" ] || continue
-    local id
-    id="$(get_field "$f" "id")"
-    if [ -n "$id" ]; then
-      local num
-      num=$((10#$id))
-      if [ "$num" -gt "$max" ]; then
-        max=$num
+  local counter_file="$TASKS_DIR/.next-id"
+  local next
+
+  if [ -f "$counter_file" ]; then
+    next=$(cat "$counter_file" | tr -d '[:space:]')
+  else
+    # Bootstrap: scan existing task files for highest ID
+    local max=0
+    for f in "$TASKS_DIR"/*.md; do
+      [ -f "$f" ] || continue
+      local id
+      id="$(get_field "$f" "id")"
+      if [ -n "$id" ]; then
+        local num
+        num=$((10#$id))
+        [ "$num" -gt "$max" ] && max=$num
       fi
-    fi
-  done
-  printf "%03d\n" $((max + 1))
+    done
+    next=$((max + 1))
+  fi
+
+  # Reserve this ID — write next+1 for the next caller
+  printf "%d\n" "$((next + 1))" > "$counter_file"
+  printf "%03d\n" "$next"
 }
 
 cmd_create() {
