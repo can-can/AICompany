@@ -1,0 +1,11 @@
+node_modules/
+logs/
+.env
+*.log
+.DS_Store
+roles/.sessions.json
+tasks/.server-pid
+tasks/.daemon-pid
+tasks/.daemon-state
+tasks/.daemon-notify-queue
+tasks/.daemon-heartbeat
