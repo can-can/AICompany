@@ -1,28 +1,67 @@
 import express from 'express'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { getNextId } from './task-parser.js'
+import { mkdirSync } from 'node:fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-export function createWebServer(roleManager, taskStore, logger, { port = 4000 } = {}) {
+export function createWebServer(projectStore, { port = 4000 } = {}) {
   const app = express()
 
-  // Serve the public homepage at the root
-  app.use(express.static(join(__dirname, '../../public')))
-
-  // Serve the internal dashboard under /dashboard/
+  // Dashboard and root redirect
   app.use('/dashboard', express.static(join(__dirname, '../dashboard')))
+  app.get('/', (req, res) => res.redirect('/dashboard'))
+
+  // Helper: resolve project from ?project= query param, send error if invalid
+  function requireProject(req, res) {
+    const name = req.query.project
+    if (!name) {
+      res.status(400).json({ error: 'project query parameter required' })
+      return null
+    }
+    const project = projectStore.getProject(name)
+    if (!project) {
+      res.status(404).json({ error: `project '${name}' not found` })
+      return null
+    }
+    if (project.status === 'offline') {
+      res.status(503).json({ error: `project '${name}' is offline` })
+      return null
+    }
+    return project
+  }
+
+  app.get('/api/projects', (req, res) => {
+    res.json(projectStore.getProjects())
+  })
 
   app.get('/api/status', (req, res) => {
-    res.json({ roles: roleManager.getStatus() })
+    const project = requireProject(req, res)
+    if (!project) return
+    res.json({ project: project.name, roles: project.roleManager.getStatus() })
   })
 
   app.get('/api/tasks', (req, res) => {
-    res.json({ tasks: taskStore.getAll() })
+    const project = requireProject(req, res)
+    if (!project) return
+    res.json(project.taskStore.getAll())
   })
 
   app.get('/api/logs', (req, res) => {
-    res.json({ logs: logger.get(50) })
+    const project = requireProject(req, res)
+    if (!project) return
+    const limit = parseInt(req.query.limit ?? '50', 10)
+    res.json(project.logger.get(limit))
+  })
+
+  app.post('/api/next-id', (req, res) => {
+    const project = requireProject(req, res)
+    if (!project) return
+    const tasksDir = join(project.path, 'tasks')
+    mkdirSync(tasksDir, { recursive: true })
+    const id = getNextId(tasksDir)
+    res.json({ id })
   })
 
   const server = app.listen(port)
