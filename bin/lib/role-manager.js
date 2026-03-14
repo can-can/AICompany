@@ -37,7 +37,9 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
 
     if (runner.currentTask) {
       const fresh = readTaskFile(runner.currentTask.filepath)
-      if (fresh && fresh.status === 'in_progress') {
+      if (!fresh) {
+        logger.add('warn', role, `task #${runner.currentTask.id} file gone — treating as done`)
+      } else if (fresh.status === 'in_progress') {
         runner.state = 'waiting_human'
         logger.add('warn', role, `waiting for human input on task #${runner.currentTask.id}`)
         notifyIdle(role)
@@ -79,7 +81,10 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
 
   function enqueue(task) {
     const role = task.to
-    if (!runners[role]) return
+    if (!runners[role]) {
+      logger.add('warn', null, `enqueue: unknown role "${role}" for task #${task.id ?? '?'}`)
+      return
+    }
     if (task.status !== 'pending') return
     // Deduplicate: skip if already queued
     if (runners[role].queue.some(t => t.id === task.id)) return
