@@ -3,15 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Company Dashboard</title>
+  <title>AI Company</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; display: flex; flex-direction: column; }
     header { background: #161b22; border-bottom: 1px solid #30363d; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
     header h1 { font-size: 16px; font-weight: 600; }
     #refresh-info { font-size: 12px; color: #8b949e; }
-    #alert-banner { display: none; background: #3d1414; border-left: 4px solid #f85149; padding: 12px 24px; font-size: 13px; color: #ffa198; }
-    main { padding: 20px 24px; }
+    #alert-banner { display: none; background: #3d1414; border-left: 4px solid #f85149; padding: 10px 24px; font-size: 13px; color: #ffa198; }
+    #layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* Sidebar */
+    #sidebar { width: 200px; min-width: 200px; background: #161b22; border-right: 1px solid #30363d; padding: 16px 0; overflow-y: auto; }
+    #sidebar h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #8b949e; padding: 0 16px 8px; }
+    .project-item { padding: 8px 16px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; border-left: 3px solid transparent; }
+    .project-item:hover { background: #21262d; }
+    .project-item.active { background: #21262d; border-left-color: #58a6ff; color: #58a6ff; }
+    .project-item.offline { color: #8b949e; }
+    .project-dot { width: 7px; height: 7px; border-radius: 50%; background: #30363d; flex-shrink: 0; }
+    .project-dot.working { background: #ffa657; }
+    .project-dot.waiting { background: #f85149; }
+    .project-dot.active-proj { background: #3fb950; }
+
+    /* Main content */
+    #main { flex: 1; overflow-y: auto; padding: 20px 24px; }
+    #project-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #e6edf3; }
     section { margin-bottom: 24px; }
     section h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #8b949e; margin-bottom: 12px; }
     #role-cards { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -28,7 +44,6 @@
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th { text-align: left; padding: 8px 12px; color: #8b949e; font-weight: normal; border-bottom: 1px solid #21262d; }
     td { padding: 8px 12px; border-bottom: 1px solid #21262d; }
-    tr.waiting { background: #1a0a0a; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
     .badge.pending { color: #8b949e; border: 1px solid #30363d; }
     .badge.in_progress { color: #ffa657; border: 1px solid #5a3800; }
@@ -40,6 +55,7 @@
     .log-entry .role-tag { color: #58a6ff; margin-right: 8px; }
     .log-entry.error .msg { color: #f85149; }
     .log-entry.warn .msg { color: #ffa657; }
+    #empty-state { color: #8b949e; font-size: 14px; padding: 40px 0; }
   </style>
 </head>
 <body>
@@ -50,37 +66,83 @@
 
   <div id="alert-banner"></div>
 
-  <main>
-    <section>
-      <h2>Roles</h2>
-      <div id="role-cards"></div>
-    </section>
+  <div id="layout">
+    <aside id="sidebar">
+      <h3>Projects</h3>
+      <ul id="project-list" style="list-style:none"></ul>
+    </aside>
 
-    <section>
-      <h2>Tasks</h2>
-      <table>
-        <thead><tr><th>ID</th><th>Title</th><th>From</th><th>To</th><th>Status</th><th>Priority</th></tr></thead>
-        <tbody id="task-rows"></tbody>
-      </table>
-    </section>
+    <div id="main">
+      <div id="project-title"></div>
 
-    <section>
-      <h2>Log</h2>
-      <div id="log-box"></div>
-    </section>
-  </main>
+      <div id="empty-state" style="display:none">
+        No projects registered. Run: <code>ai-company init</code>
+      </div>
+
+      <section id="roles-section">
+        <h2>Roles</h2>
+        <div id="role-cards"></div>
+      </section>
+
+      <section>
+        <h2>Tasks</h2>
+        <table>
+          <thead><tr><th>ID</th><th>Title</th><th>From</th><th>To</th><th>Owner</th><th>Status</th><th>Priority</th></tr></thead>
+          <tbody id="task-rows"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Log</h2>
+        <div id="log-box"></div>
+      </section>
+    </div>
+  </div>
 
   <script>
+    let selectedProject = null
+
     async function fetchJson(url) {
       const res = await fetch(url)
+      if (!res.ok) throw new Error(`${res.status} ${url}`)
       return res.json()
     }
 
-    function renderRoles(roles) {
+    function dotClass(project) {
+      // /api/projects does not return per-role states, so dot indicates online/offline only.
+      // (The .working and .waiting CSS classes are reserved for a future enhancement where the
+      // sidebar fetches /api/status per project and aggregates role states into a single indicator.)
+      return project.status === 'offline' ? '' : 'active-proj'
+    }
+
+    function renderSidebar(projects) {
+      const list = document.getElementById('project-list')
+      list.innerHTML = projects.map(p => `
+        <li class="project-item ${p.status === 'offline' ? 'offline' : ''} ${p.name === selectedProject ? 'active' : ''}"
+            onclick="selectProject('${p.name}')">
+          <span class="project-dot ${dotClass(p)}"></span>
+          ${p.name}
+        </li>`).join('')
+
+      document.getElementById('empty-state').style.display = projects.length === 0 ? 'block' : 'none'
+      document.getElementById('roles-section').style.display = projects.length === 0 ? 'none' : ''
+    }
+
+    function selectProject(name) {
+      selectedProject = name
+      document.getElementById('project-title').textContent = name
+      refresh()
+    }
+
+    function stateLabel(s) {
+      return { free: '✓ free', working: '⟳ working', waiting_human: '⚠ waiting', ready: '✓ ready' }[s] || s
+    }
+
+    function renderRoles(projectName, roles) {
       const container = document.getElementById('role-cards')
       const waiting = []
       container.innerHTML = Object.entries(roles).map(([name, r]) => {
-        if (r.state === 'waiting_human') waiting.push({ name, task: r.activeTask })
+        if (r.state === 'waiting_human') waiting.push({ project: projectName, role: name, task: r.activeTask })
         return `<div class="role-card ${r.state}">
           <div class="role-name">${name}</div>
           <div class="role-state ${r.state}">${stateLabel(r.state)}</div>
@@ -92,24 +154,21 @@
       if (waiting.length) {
         banner.style.display = 'block'
         banner.innerHTML = '⚠ Waiting for human input: ' + waiting.map(w =>
-          `<strong>${w.name}</strong>${w.task ? ` on task #${w.task.id} "${w.task.title}"` : ''}`
-        ).join(', ') + ` — run <code>company send &lt;role&gt; "your message"</code>`
+          `<strong>${w.project} › ${w.role}</strong>${w.task ? ` on #${w.task.id} "${w.task.title}"` : ''}`
+        ).join(', ') + ` — run <code>ai-company send ${waiting[0].role} "your message"</code>`
       } else {
         banner.style.display = 'none'
       }
     }
 
-    function stateLabel(s) {
-      return { free: '✓ free', working: '⟳ working', waiting_human: '⚠ waiting', ready: '✓ ready' }[s] || s
-    }
-
     function renderTasks(tasks) {
       document.getElementById('task-rows').innerHTML = tasks.map(t => `
-        <tr class="${t.status === 'in_progress' ? 'waiting' : ''}">
+        <tr>
           <td style="color:#8b949e">${t.id}</td>
           <td>${t.title}</td>
           <td style="color:#8b949e">${t.from ?? '-'}</td>
           <td>${t.to ?? '-'}</td>
+          <td style="color:#8b949e">${t.owner ?? '-'}</td>
           <td><span class="badge ${t.status}">${t.status}</span></td>
           <td style="color:#8b949e">${t.priority}</td>
         </tr>`).join('')
@@ -128,14 +187,28 @@
 
     async function refresh() {
       try {
-        const [{ roles }, { tasks }, { logs }] = await Promise.all([
-          fetchJson('/api/status'),
-          fetchJson('/api/tasks'),
-          fetchJson('/api/logs')
-        ])
-        renderRoles(roles)
-        renderTasks(tasks)
-        renderLogs(logs)
+        const projects = await fetchJson('/api/projects')
+        renderSidebar(projects)
+
+        // Auto-select first active project if none selected
+        if (!selectedProject && projects.length > 0) {
+          const first = projects.find(p => p.status === 'active') ?? projects[0]
+          selectedProject = first.name
+          document.getElementById('project-title').textContent = first.name
+        }
+
+        if (selectedProject) {
+          const enc = encodeURIComponent(selectedProject)
+          const [statusData, tasks, logs] = await Promise.all([
+            fetchJson(`/api/status?project=${enc}`),
+            fetchJson(`/api/tasks?project=${enc}`),
+            fetchJson(`/api/logs?project=${enc}&limit=50`)
+          ])
+          renderRoles(selectedProject, statusData.roles)
+          renderTasks(tasks)
+          renderLogs(logs)
+        }
+
         document.getElementById('refresh-info').textContent = `updated ${new Date().toLocaleTimeString()}`
       } catch (e) {
         document.getElementById('refresh-info').textContent = 'connection lost — retrying...'
