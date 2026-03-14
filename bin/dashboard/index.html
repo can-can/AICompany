@@ -157,7 +157,7 @@
         return `<div class="role-card ${esc(r.state)}">
           <div class="role-name">${esc(name)}</div>
           <div class="role-state ${esc(r.state)}">${esc(stateLabel(r.state))}</div>
-          <div class="role-meta">${r.activeTask ? `#${esc(r.activeTask.id)} ${esc(r.activeTask.title)}` : 'No active task'}<br>queue: ${r.queueDepth}</div>
+          <div class="role-meta">${r.activeTask ? `#${esc(r.activeTask.id)} ${esc(r.activeTask.title)}` : 'No active task'}<br>queue: ${esc(r.queueDepth)}</div>
         </div>`
       }).join('')
 
