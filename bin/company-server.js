@@ -10,6 +10,7 @@ import { createFileWatcher } from './lib/file-watcher.js'
 import { createWebServer }   from './lib/web-server.js'
 import { buildTaskList, readTaskFile } from './lib/task-parser.js'
 import { readRegistry, getRegistryDir, getRegistryPath, getPidPath } from './lib/project-registry.js'
+import { validateProject } from './lib/project-validator.js'
 
 // Map of project name → active project state
 // Each entry: { name, path, status: 'active'|'offline', logger, roleManager, taskStore, watcher }
@@ -30,6 +31,24 @@ async function activateProject({ name, path }) {
   }
 
   try {
+    // Validate and auto-fix project structure before loading
+    const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
+    const validation = validateProject(path, packageRoot)
+    if (!validation.valid) {
+      for (const fix of validation.fixes) {
+        try {
+          fix.apply()
+          console.log(`[hub] Auto-fixed '${name}': ${fix.description}`)
+        } catch (fixErr) {
+          console.warn(`[hub] Fix failed for '${name}': ${fix.description} — ${fixErr.message}`)
+        }
+      }
+      const recheck = validateProject(path, packageRoot)
+      for (const err of recheck.errors) {
+        console.warn(`[hub] Validation warning for '${name}': ${err}`)
+      }
+    }
+
     const roles = loadRoles(path)
     const logger = createLogger()
     const sessionsPath = join(path, 'roles', '.sessions.json')

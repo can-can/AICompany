@@ -175,6 +175,34 @@ async function cmdRegister(args) {
   addProject(name, dir)
   console.log(`Registered project '${name}' at ${dir}`)
   console.log('If the hub is running, it will pick up the new project automatically.')
+
+  // Validate project structure
+  const { validateProject } = await import('./lib/project-validator.js')
+  const packageRoot = join(__dirname, '..')
+  const result = validateProject(dir, packageRoot)
+
+  if (!result.valid) {
+    console.log(`\nValidation found ${result.errors.length} issue(s):`)
+    for (const err of result.errors) console.log(`  - ${err}`)
+
+    if (result.fixes.length > 0) {
+      const { createInterface } = await import('node:readline/promises')
+      const rl = createInterface({ input: process.stdin, output: process.stdout })
+      const answer = await rl.question(`\nFix ${result.fixes.length} issue(s)? [Y/n] `)
+      rl.close()
+
+      if (!answer || answer.toLowerCase().startsWith('y')) {
+        for (const fix of result.fixes) {
+          try {
+            fix.apply()
+            console.log(`  ✓ Fixed: ${fix.description}`)
+          } catch (err) {
+            console.error(`  ✗ Failed: ${fix.description} — ${err.message}`)
+          }
+        }
+      }
+    }
+  }
 }
 
 async function cmdUnregister(args) {
@@ -194,6 +222,80 @@ async function cmdUnregister(args) {
   }
   console.error(`Error: No registered project found matching: ${input}`)
   process.exit(1)
+}
+
+async function cmdValidate(args, flags) {
+  const { validateProject } = await import('./lib/project-validator.js')
+  const packageRoot = join(__dirname, '..')
+
+  let projects
+  if (flags.all) {
+    const { readRegistry } = await reg()
+    projects = readRegistry()
+    if (projects.length === 0) {
+      console.log('No registered projects. Run: ai-company init')
+      return
+    }
+  } else {
+    const project = await requireProject(flags)
+    projects = [project]
+  }
+
+  let hasUnfixable = false
+
+  for (const project of projects) {
+    if (projects.length > 1) console.log(`\n--- ${project.name} ---`)
+
+    if (!existsSync(project.path)) {
+      console.error(`  Project path not found: ${project.path}`)
+      hasUnfixable = true
+      continue
+    }
+
+    const result = validateProject(project.path, packageRoot)
+
+    if (result.valid) {
+      console.log(`  Project structure OK`)
+      continue
+    }
+
+    console.log(`  Found ${result.errors.length} issue(s):`)
+    for (const err of result.errors) console.log(`    - ${err}`)
+
+    if (result.fixes.length > 0) {
+      const { createInterface } = await import('node:readline/promises')
+      const rl = createInterface({ input: process.stdin, output: process.stdout })
+      const answer = await rl.question(`\n  Fix ${result.fixes.length} issue(s)? [Y/n] `)
+      rl.close()
+
+      if (!answer || answer.toLowerCase().startsWith('y')) {
+        for (const fix of result.fixes) {
+          try {
+            fix.apply()
+            console.log(`    ✓ Fixed: ${fix.description}`)
+          } catch (err) {
+            console.error(`    ✗ Failed: ${fix.description} — ${err.message}`)
+          }
+        }
+
+        // Re-validate
+        const recheck = validateProject(project.path, packageRoot)
+        if (recheck.valid) {
+          console.log(`  Project structure OK after fixes`)
+        } else {
+          console.log(`  ${recheck.errors.length} unfixable issue(s) remain:`)
+          for (const err of recheck.errors) console.log(`    - ${err}`)
+          hasUnfixable = true
+        }
+      } else {
+        hasUnfixable = true
+      }
+    } else {
+      hasUnfixable = true
+    }
+  }
+
+  if (hasUnfixable) process.exit(1)
 }
 
 // ── Task management ───────────────────────────────────────────────────────────
@@ -440,6 +542,7 @@ const commands = {
   list:       () => cmdList(),
   register:   () => cmdRegister(args),
   unregister: () => cmdUnregister(args),
+  validate:   () => cmdValidate(args, flags),
   status:     () => cmdStatus(flags),
   tasks:      () => cmdTasks(args, flags),
   'next-id':  () => cmdNextId(flags),
@@ -451,7 +554,7 @@ if (!command || !commands[command]) {
   console.log(`Usage: ai-company <command> [args]
 
 Hub:        start | stop | health
-Projects:   init [dir] | register [dir] | unregister [dir] | list
+Projects:   init [dir] | register [dir] | unregister [dir] | list | validate [--all]
 Tasks:      create <role> <title> | tasks [role] | send <role> "msg" | next-id | status
 
 Options:    --project <name>  (target a specific project from any directory)`)
