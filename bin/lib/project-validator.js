@@ -39,7 +39,30 @@ export function validateProject(projectPath, packageRoot) {
     } catch {}
   }
   if (existsSync(rolesDir) && roles.length === 0) {
-    errors.push('No role directories found in roles/')
+    const defaultRoles = ['pm', 'engineer', 'qa']
+    const desc = `No role directories found in roles/ — will create defaults: ${defaultRoles.join(', ')}`
+    errors.push(desc)
+    fixes.push({
+      description: desc,
+      apply: () => {
+        for (const role of defaultRoles) {
+          const roleDir = join(rolesDir, role)
+          mkdirSync(roleDir, { recursive: true })
+          const roleTemplate = join(packageRoot, 'roles', `${role}.md`)
+          if (existsSync(roleTemplate)) {
+            copyFileSync(roleTemplate, join(roleDir, 'CLAUDE.md'))
+          } else {
+            writeFileSync(join(roleDir, 'CLAUDE.md'), `# ${role}\n\nYou are the ${role}. Complete tasks assigned to you.\n`)
+          }
+          const memTemplate = join(packageRoot, 'memories', `${role}.md`)
+          if (existsSync(memTemplate)) {
+            copyFileSync(memTemplate, join(roleDir, 'memory.md'))
+          } else {
+            writeFileSync(join(roleDir, 'memory.md'), `# ${role} Memory\n\n## Handoff Notes\n\n`)
+          }
+        }
+      }
+    })
   }
 
   // Check 4 & 5: each role has CLAUDE.md and memory.md

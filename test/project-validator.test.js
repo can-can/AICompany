@@ -61,7 +61,7 @@ test('missing roles/ directory is fixable', (t) => {
   assert.ok(result.fixes.some(f => f.description.includes('roles/')))
 })
 
-test('empty roles/ directory is unfixable', (t) => {
+test('empty roles/ directory is fixable with default roles', (t) => {
   const dir = makeTmpDir('empty-roles')
   t.after(() => rmSync(dir, { recursive: true, force: true }))
 
@@ -72,8 +72,13 @@ test('empty roles/ directory is unfixable', (t) => {
   const result = validateProject(dir, packageRoot)
   assert.equal(result.valid, false)
   assert.ok(result.errors.some(e => e.includes('No role directories')))
-  const fixDescriptions = result.fixes.map(f => f.description)
-  assert.ok(!fixDescriptions.some(d => d.includes('No role directories')))
+  assert.ok(result.fixes.some(f => f.description.includes('No role directories')))
+
+  result.fixes.forEach(f => f.apply())
+  for (const role of ['pm', 'engineer', 'qa']) {
+    assert.ok(existsSync(join(dir, 'roles', role, 'CLAUDE.md')), `${role}/CLAUDE.md should exist`)
+    assert.ok(existsSync(join(dir, 'roles', role, 'memory.md')), `${role}/memory.md should exist`)
+  }
 })
 
 test('role missing CLAUDE.md is fixable with template', (t) => {
