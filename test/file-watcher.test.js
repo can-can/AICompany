@@ -14,7 +14,7 @@ function waitMs(ms) {
   return new Promise(r => setTimeout(r, ms))
 }
 
-test('file watcher enqueues pending task', async (t) => {
+test('file watcher enqueues pending task on add', async (t) => {
   const dir = join(tmpdir(), `fw-test-${Date.now()}-a`)
   mkdirSync(dir, { recursive: true })
   const logger = makeLogger()
@@ -28,7 +28,6 @@ test('file watcher enqueues pending task', async (t) => {
   const watcher = createFileWatcher(dir, roleManager, logger)
   t.after(async () => { await watcher.close(); rmSync(dir, { recursive: true, force: true }) })
 
-  // Wait for watcher to be ready
   await waitMs(300)
 
   writeFileSync(join(dir, '001-test.md'), `---\nid: "001"\ntitle: "Test"\nstatus: pending\nfrom: human\nto: engineer\npriority: medium\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n`)
@@ -38,14 +37,13 @@ test('file watcher enqueues pending task', async (t) => {
   assert.equal(enqueued[0].id, '001')
 })
 
-test('file watcher dispatches on done task', async (t) => {
+test('file watcher dispatches when task transitions to done via change', async (t) => {
   const dir = join(tmpdir(), `fw-test-${Date.now()}-b`)
   mkdirSync(dir, { recursive: true })
   const logger = makeLogger()
-  const enqueued = []
   const dispatched = []
   const roleManager = {
-    enqueue: (task) => enqueued.push(task),
+    enqueue: () => {},
     scheduleDispatch: (role) => dispatched.push(role)
   }
 
@@ -54,14 +52,19 @@ test('file watcher dispatches on done task', async (t) => {
 
   await waitMs(300)
 
-  writeFileSync(join(dir, '002-done.md'), `---\nid: "002"\ntitle: "Done task"\nstatus: done\nfrom: pm\nto: engineer\npriority: medium\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n`)
-
+  // Create task as pending (add event records status)
+  writeFileSync(join(dir, '002-task.md'), `---\nid: "002"\ntitle: "Task"\nstatus: pending\nfrom: pm\nto: engineer\npriority: medium\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n`)
   await waitMs(500)
+
+  // Transition to done (change event triggers dispatch)
+  writeFileSync(join(dir, '002-task.md'), `---\nid: "002"\ntitle: "Task"\nstatus: done\nfrom: pm\nto: engineer\npriority: medium\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n`)
+  await waitMs(500)
+
   assert.ok(dispatched.includes('engineer'), 'should dispatch to-role')
   assert.ok(dispatched.includes('pm'), 'should dispatch from-role')
 })
 
-test('file watcher skips done tasks during initial scan', async (t) => {
+test('file watcher does NOT dispatch for done tasks found on initial scan', async (t) => {
   const dir = join(tmpdir(), `fw-test-${Date.now()}-c`)
   mkdirSync(dir, { recursive: true })
 
@@ -79,10 +82,10 @@ test('file watcher skips done tasks during initial scan', async (t) => {
   t.after(async () => { await watcher.close(); rmSync(dir, { recursive: true, force: true }) })
 
   await waitMs(500)
-  assert.equal(dispatched.length, 0, 'should NOT dispatch for done tasks found during initial scan')
+  assert.equal(dispatched.length, 0, 'should NOT dispatch for done tasks on add')
 })
 
-test('file watcher does not re-dispatch for same done task', async (t) => {
+test('file watcher does NOT re-dispatch when done task is re-written with same status', async (t) => {
   const dir = join(tmpdir(), `fw-test-${Date.now()}-d`)
   mkdirSync(dir, { recursive: true })
   const logger = makeLogger()
@@ -97,16 +100,19 @@ test('file watcher does not re-dispatch for same done task', async (t) => {
 
   await waitMs(300)
 
-  const taskContent = `---\nid: "004"\ntitle: "Task"\nstatus: done\nfrom: pm\nto: engineer\npriority: medium\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n`
-  writeFileSync(join(dir, '004-task.md'), taskContent)
+  // Create as pending, then transition to done
+  writeFileSync(join(dir, '004-task.md'), `---\nid: "004"\ntitle: "Task"\nstatus: pending\nfrom: pm\nto: engineer\npriority: medium\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n`)
+  await waitMs(500)
+
+  writeFileSync(join(dir, '004-task.md'), `---\nid: "004"\ntitle: "Task"\nstatus: done\nfrom: pm\nto: engineer\npriority: medium\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n`)
   await waitMs(500)
 
   const firstCount = dispatched.length
-  assert.ok(firstCount > 0, 'should dispatch on first done event')
+  assert.ok(firstCount > 0, 'should dispatch on transition to done')
 
-  // Touch the file again — should NOT dispatch again
-  writeFileSync(join(dir, '004-task.md'), taskContent + '\n')
+  // Re-write with same done status — should NOT dispatch again
+  writeFileSync(join(dir, '004-task.md'), `---\nid: "004"\ntitle: "Task"\nstatus: done\nfrom: pm\nto: engineer\npriority: medium\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\nsome extra content\n`)
   await waitMs(500)
 
-  assert.equal(dispatched.length, firstCount, 'should NOT re-dispatch for same done task')
+  assert.equal(dispatched.length, firstCount, 'should NOT re-dispatch for same done status')
 })

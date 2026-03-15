@@ -11,36 +11,52 @@ export function createFileWatcher(tasksDir, roleManager, logger) {
     awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 50 }
   })
 
-  let initialScanComplete = false
-  const processedDone = new Set()
+  // Track known task statuses to detect actual transitions.
+  // 'add' events populate the map without dispatching (could be initial scan or new file).
+  // 'change' events dispatch only when status actually transitions to done/rejected.
+  const knownStatus = new Map()
 
-  function handleTaskFile(filepath) {
+  function handleAdd(filepath) {
     const name = basename(filepath)
     if (!name.endsWith('.md') || name.startsWith('.')) return
     const task = readTaskFile(filepath)
     if (!task) return
 
+    // Record current status — don't dispatch for done tasks on 'add' since we
+    // can't distinguish initial scan from new files, and a new file arriving
+    // already-done is not a transition we need to react to.
+    knownStatus.set(task.id, task.status)
+
+    if (task.status === 'pending') {
+      logger.add('info', task.to, `file event: ${task.id} status=${task.status}`)
+      roleManager.enqueue(task)
+    }
+  }
+
+  function handleChange(filepath) {
+    const name = basename(filepath)
+    if (!name.endsWith('.md') || name.startsWith('.')) return
+    const task = readTaskFile(filepath)
+    if (!task) return
+
+    const prevStatus = knownStatus.get(task.id)
+    knownStatus.set(task.id, task.status)
+
     if (task.status === 'pending') {
       logger.add('info', task.to, `file event: ${task.id} status=${task.status}`)
       roleManager.enqueue(task)
     } else if (task.status === 'done' || task.status === 'rejected') {
-      // During initial scan, skip done/rejected tasks — they're historical
-      if (!initialScanComplete) return
-      // Skip if we already dispatched for this done task (prevents floods on re-touch)
-      if (processedDone.has(task.id)) return
-      processedDone.add(task.id)
+      // Only dispatch if status actually changed (not a no-op re-write)
+      if (prevStatus === task.status) return
 
       logger.add('info', task.to, `file event: ${task.id} status=${task.status}`)
-      // Unblock the to-role if it is in waiting_human (human resolved the task by editing the file)
       if (task.to) roleManager.scheduleDispatch(task.to)
-      // Notify the from-role so it can pick up its next pending task
       if (task.from && task.from !== 'human') roleManager.scheduleDispatch(task.from)
     }
   }
 
-  watcher.on('add', handleTaskFile)
-  watcher.on('change', handleTaskFile)
-  watcher.on('ready', () => { initialScanComplete = true })
+  watcher.on('add', handleAdd)
+  watcher.on('change', handleChange)
   watcher.on('error', err => logger.add('error', null, `watcher error: ${err.message}`))
 
   return {
