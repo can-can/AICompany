@@ -60,3 +60,53 @@ test('file watcher dispatches on done task', async (t) => {
   assert.ok(dispatched.includes('engineer'), 'should dispatch to-role')
   assert.ok(dispatched.includes('pm'), 'should dispatch from-role')
 })
+
+test('file watcher skips done tasks during initial scan', async (t) => {
+  const dir = join(tmpdir(), `fw-test-${Date.now()}-c`)
+  mkdirSync(dir, { recursive: true })
+
+  // Write a done task BEFORE starting the watcher
+  writeFileSync(join(dir, '003-old.md'), `---\nid: "003"\ntitle: "Old done"\nstatus: done\nfrom: pm\nto: engineer\npriority: medium\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n`)
+
+  const logger = makeLogger()
+  const dispatched = []
+  const roleManager = {
+    enqueue: () => {},
+    scheduleDispatch: (role) => dispatched.push(role)
+  }
+
+  const watcher = createFileWatcher(dir, roleManager, logger)
+  t.after(async () => { await watcher.close(); rmSync(dir, { recursive: true, force: true }) })
+
+  await waitMs(500)
+  assert.equal(dispatched.length, 0, 'should NOT dispatch for done tasks found during initial scan')
+})
+
+test('file watcher does not re-dispatch for same done task', async (t) => {
+  const dir = join(tmpdir(), `fw-test-${Date.now()}-d`)
+  mkdirSync(dir, { recursive: true })
+  const logger = makeLogger()
+  const dispatched = []
+  const roleManager = {
+    enqueue: () => {},
+    scheduleDispatch: (role) => dispatched.push(role)
+  }
+
+  const watcher = createFileWatcher(dir, roleManager, logger)
+  t.after(async () => { await watcher.close(); rmSync(dir, { recursive: true, force: true }) })
+
+  await waitMs(300)
+
+  const taskContent = `---\nid: "004"\ntitle: "Task"\nstatus: done\nfrom: pm\nto: engineer\npriority: medium\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n`
+  writeFileSync(join(dir, '004-task.md'), taskContent)
+  await waitMs(500)
+
+  const firstCount = dispatched.length
+  assert.ok(firstCount > 0, 'should dispatch on first done event')
+
+  // Touch the file again — should NOT dispatch again
+  writeFileSync(join(dir, '004-task.md'), taskContent + '\n')
+  await waitMs(500)
+
+  assert.equal(dispatched.length, firstCount, 'should NOT re-dispatch for same done task')
+})
