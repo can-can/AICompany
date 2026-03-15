@@ -22,12 +22,33 @@ export function validateProject(projectPath, packageRoot) {
     })
   }
 
-  // Check 2: roles/ directory
+  // Check 2: roles/ directory (if missing, scaffold with default roles)
   const rolesDir = join(projectPath, 'roles')
   if (!existsSync(rolesDir)) {
-    const desc = 'Missing roles/ directory'
+    const defaultRoles = ['pm', 'engineer', 'qa']
+    const desc = `Missing roles/ directory — will create with defaults: ${defaultRoles.join(', ')}`
     errors.push(desc)
-    fixes.push({ description: desc, apply: () => mkdirSync(rolesDir, { recursive: true }) })
+    fixes.push({
+      description: desc,
+      apply: () => {
+        for (const role of defaultRoles) {
+          const roleDir = join(rolesDir, role)
+          mkdirSync(roleDir, { recursive: true })
+          const roleTemplate = join(packageRoot, 'roles', `${role}.md`)
+          if (existsSync(roleTemplate)) {
+            copyFileSync(roleTemplate, join(roleDir, 'CLAUDE.md'))
+          } else {
+            writeFileSync(join(roleDir, 'CLAUDE.md'), `# ${role}\n\nYou are the ${role}. Complete tasks assigned to you.\n`)
+          }
+          const memTemplate = join(packageRoot, 'memories', `${role}.md`)
+          if (existsSync(memTemplate)) {
+            copyFileSync(memTemplate, join(roleDir, 'memory.md'))
+          } else {
+            writeFileSync(join(roleDir, 'memory.md'), `# ${role} Memory\n\n## Handoff Notes\n\n`)
+          }
+        }
+      }
+    })
   }
 
   // Check 3: at least one role subdirectory
