@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { readTaskFile, buildTaskList, priorityOrder, getNextId } from '../bin/lib/task-parser.js'
+import { readTaskFile, buildTaskList, priorityOrder, getNextId, parseFrontmatter } from '../bin/lib/task-parser.js'
 
 const TMP = '/tmp/ai-company-test-tasks'
 
@@ -141,4 +141,12 @@ test('getNextId returns 001 when counter file contains non-numeric value', (t) =
   writeFileSync(join(dir, '.next-id'), 'notanumber')
   const id = getNextId(dir)
   assert.equal(id, '001')
+})
+
+test('parseFrontmatter handles CRLF line endings', () => {
+  const content = '---\r\nid: "001"\r\ntitle: "Test"\r\nstatus: pending\r\n---\r\n\r\nBody'
+  const result = parseFrontmatter(content)
+  assert.equal(result.id, '001')
+  assert.equal(result.title, 'Test')
+  assert.equal(result.status, 'pending')
 })

@@ -26,7 +26,7 @@ human → pm → engineer (build)
 **Always** use the CLI to get a unique task ID — never invent one yourself:
 
 ```bash
-./bin/company next-id   # prints e.g. "004", reserves it atomically
+ai-company next-id   # prints e.g. "004", reserves it atomically
 ```
 
 Call it **once per task** you plan to create. If creating 3 tasks, call it 3 times and collect the IDs before writing any files. IDs are globally unique across all roles and sessions.

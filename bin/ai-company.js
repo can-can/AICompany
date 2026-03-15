@@ -120,9 +120,7 @@ async function cmdStop() {
     const deadline = Date.now() + 3000
     while (Date.now() < deadline) {
       try { process.kill(pid, 0) } catch { break } // process gone
-      // Brief pause — synchronous spin is acceptable for a CLI command
-      const until = Date.now() + 100
-      while (Date.now() < until) {} // spin 100ms
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100)
     }
     try { unlinkSync(pidPath) } catch {}
     console.log(`Server stopped (PID ${pid}).`)
@@ -180,16 +178,22 @@ async function cmdRegister(args) {
 }
 
 async function cmdUnregister(args) {
-  const dir = resolve(args[0] ?? '.')
+  const input = args[0] ?? '.'
   const { removeProject, readRegistry } = await reg()
   const before = readRegistry().length
-  removeProject(dir)
-  const after = readRegistry().length
-  if (after === before) {
-    console.error(`Error: No registered project found at path: ${dir}`)
-    process.exit(1)
+  // Try as name first, then as path
+  removeProject(input)
+  if (readRegistry().length < before) {
+    console.log(`Unregistered: ${input}`)
+    return
   }
-  console.log(`Unregistered: ${dir}`)
+  removeProject(resolve(input))
+  if (readRegistry().length < before) {
+    console.log(`Unregistered: ${resolve(input)}`)
+    return
+  }
+  console.error(`Error: No registered project found matching: ${input}`)
+  process.exit(1)
 }
 
 // ── Task management ───────────────────────────────────────────────────────────

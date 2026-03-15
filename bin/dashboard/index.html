@@ -211,14 +211,24 @@
 
         if (selectedProject) {
           const enc = encodeURIComponent(selectedProject)
-          const [statusData, tasks, logs] = await Promise.all([
-            fetchJson(`/api/status?project=${enc}`),
-            fetchJson(`/api/tasks?project=${enc}`),
-            fetchJson(`/api/logs?project=${enc}&limit=50`)
-          ])
-          renderRoles(selectedProject, statusData.roles)
-          renderTasks(tasks)
-          renderLogs(logs)
+          try {
+            const [statusData, tasks, logs] = await Promise.all([
+              fetchJson(`/api/status?project=${enc}`),
+              fetchJson(`/api/tasks?project=${enc}`),
+              fetchJson(`/api/logs?project=${enc}&limit=50`)
+            ])
+            renderRoles(selectedProject, statusData.roles)
+            renderTasks(tasks)
+            renderLogs(logs)
+          } catch (projErr) {
+            if (projErr.message.startsWith('503')) {
+              document.getElementById('role-cards').innerHTML = '<div style="color:#8b949e;padding:12px">Project is offline</div>'
+              document.getElementById('task-rows').innerHTML = ''
+              document.getElementById('log-box').innerHTML = ''
+            } else {
+              throw projErr
+            }
+          }
         }
 
         document.getElementById('refresh-info').textContent = `updated ${new Date().toLocaleTimeString()}`

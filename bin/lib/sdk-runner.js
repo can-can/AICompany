@@ -24,7 +24,8 @@ export function createSdkRunner(projectDir, sessionsPath) {
 
     const options = {
       cwd: join(projectDir, 'roles', role),
-      permissionMode: 'bypassPermissions'
+      // Override with AI_COMPANY_PERMISSION_MODE env var (e.g. 'default', 'acceptEdits')
+      permissionMode: process.env.AI_COMPANY_PERMISSION_MODE ?? 'bypassPermissions'
     }
     if (sessionId) options.resume = sessionId
 

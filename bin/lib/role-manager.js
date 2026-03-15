@@ -1,3 +1,5 @@
+import { priorityOrder } from './task-parser.js'
+
 export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
   const runners = {}
 
@@ -94,10 +96,6 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
       return pd !== 0 ? pd : a.created.localeCompare(b.created)
     })
     scheduleDispatch(role)
-  }
-
-  function priorityOrder(p) {
-    return { high: 0, medium: 1, low: 2 }[p] ?? 3
   }
 
   function getState(role) {

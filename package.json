@@ -8,7 +8,7 @@
   },
   "files": [
     "bin/",
-    "roles/",
+    "roles/*.md",
     "memories/",
     "templates/"
   ],
@@ -16,7 +16,7 @@
     "test": "node --test test/**/*.test.js"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "latest",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.76",
     "chokidar": "^4.0.0",
     "express": "^4.18.0"
   },
