@@ -11,7 +11,9 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
       currentTask: null,
       sessionId: null,
       dispatchChain: Promise.resolve(),
-      _idleResolvers: []
+      _idleResolvers: [],
+      lastMessages: [],   // last assistant messages from SDK (shown on dashboard)
+      inputQueue: []       // human messages queued while agent is busy
     }
   }
 
@@ -42,6 +44,26 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
       if (!fresh) {
         logger.add('warn', role, `task #${runner.currentTask.id} file gone — treating as done`)
       } else if (fresh.status === 'in_progress') {
+        // Check if human sent input while we were running
+        const humanMsg = runner.inputQueue.shift()
+        if (humanMsg) {
+          logger.add('info', role, `delivering human input to task #${runner.currentTask.id}`)
+          runner.state = 'working'
+          runner.sdkInFlight = true
+          try {
+            const result = await sdkRunner(fresh, role, runner.sessionId, { prompt: humanMsg })
+            setSessionId(role, result?.sessionId)
+            if (result?.messages?.length) runner.lastMessages = result.messages
+          } catch (err) {
+            logger.add('error', role, `sdk error on task #${fresh.id}: ${err.message}`)
+          } finally {
+            runner.sdkInFlight = false
+            runner.state = 'ready'
+            runner.currentTask = readTaskFile(fresh.filepath) ?? { ...fresh, status: 'done' }
+            scheduleDispatch(role)
+          }
+          return
+        }
         runner.state = 'waiting_human'
         logger.add('warn', role, `waiting for human input on task #${runner.currentTask.id}`)
         notifyIdle(role)
@@ -65,6 +87,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
     try {
       const result = await sdkRunner(next, role, runner.sessionId)
       setSessionId(role, result?.sessionId)
+      if (result?.messages?.length) runner.lastMessages = result.messages
     } catch (err) {
       logger.add('error', role, `sdk error on task #${next.id}: ${err.message}`)
     } finally {
@@ -98,6 +121,15 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
     scheduleDispatch(role)
   }
 
+  function sendInput(role, message) {
+    const runner = getRunner(role)
+    runner.inputQueue.push(message)
+    if (runner.state === 'waiting_human') {
+      // Kick dispatch to pick up the queued input
+      scheduleDispatch(role)
+    }
+  }
+
   function getState(role) {
     return getRunner(role).state
   }
@@ -108,7 +140,8 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
       result[role] = {
         state: runner.state,
         activeTask: runner.currentTask ? { id: runner.currentTask.id, title: runner.currentTask.title } : null,
-        queueDepth: runner.queue.length
+        queueDepth: runner.queue.length,
+        lastMessages: runner.lastMessages
       }
     }
     return result
@@ -154,5 +187,5 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
     return result
   }
 
-  return { enqueue, getState, getStatus, scheduleDispatch, loadSessions, getSessions, waitIdle }
+  return { enqueue, getState, getStatus, scheduleDispatch, sendInput, loadSessions, getSessions, waitIdle }
 }

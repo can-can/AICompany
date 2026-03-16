@@ -32,10 +32,15 @@ function makeProjectStore(projects) {
   }
 }
 
-async function request(server, path, method = 'GET') {
+async function request(server, path, method = 'GET', jsonBody) {
   const { address, port } = server.address()
   const url = `http://${address === '::' ? 'localhost' : address}:${port}${path}`
-  const res = await fetch(url, { method })
+  const opts = { method }
+  if (jsonBody !== undefined) {
+    opts.headers = { 'Content-Type': 'application/json' }
+    opts.body = JSON.stringify(jsonBody)
+  }
+  const res = await fetch(url, opts)
   return { status: res.status, body: await res.json() }
 }
 
@@ -123,6 +128,34 @@ test('GET /api/logs?limit=1 returns at most 1 entry', async (t) => {
   const { status, body } = await request(server, '/api/logs?project=Alpha&limit=1')
   assert.equal(status, 200)
   assert.equal(body.length, 1)
+})
+
+test('POST /api/send?project=Alpha delivers message to role', async (t) => {
+  const store = makeProjectStore([makeProject('Alpha')])
+  const server = createWebServer(store, { port: 0 })
+  t.after(() => new Promise(r => server.close(r)))
+
+  const { status, body } = await request(server, '/api/send?project=Alpha', 'POST', { role: 'engineer', message: 'hello' })
+  assert.equal(status, 200)
+  assert.equal(body.ok, true)
+})
+
+test('POST /api/send without role returns 400', async (t) => {
+  const store = makeProjectStore([makeProject('Alpha')])
+  const server = createWebServer(store, { port: 0 })
+  t.after(() => new Promise(r => server.close(r)))
+
+  const { status } = await request(server, '/api/send?project=Alpha', 'POST', { message: 'hello' })
+  assert.equal(status, 400)
+})
+
+test('POST /api/send with unknown role returns 400', async (t) => {
+  const store = makeProjectStore([makeProject('Alpha')])
+  const server = createWebServer(store, { port: 0 })
+  t.after(() => new Promise(r => server.close(r)))
+
+  const { status } = await request(server, '/api/send?project=Alpha', 'POST', { role: 'unknown', message: 'hello' })
+  assert.equal(status, 400)
 })
 
 test('POST /api/next-id?project=Alpha returns reserved ID', async (t) => {

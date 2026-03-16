@@ -410,28 +410,24 @@ async function cmdSend(args, flags) {
   }
 
   const project = await requireProject(flags)
-  const { readTaskFile } = await import('./lib/task-parser.js')
-  const tasksDir = join(project.path, 'tasks')
-
-  let taskFile = null
+  const enc = encodeURIComponent(project.name)
   try {
-    const files = readdirSync(tasksDir).filter(f => f.endsWith('.md') && !f.startsWith('.'))
-    for (const f of files) {
-      const t = readTaskFile(join(tasksDir, f))
-      // 'waiting_human' is a runtime server state — the task file stays 'in_progress' while
-      // the agent is paused waiting for human input. in_progress is the correct file-level proxy.
-      if (t?.to === role && t?.status === 'in_progress') { taskFile = join(tasksDir, f); break }
+    const res = await fetch(`http://localhost:4000/api/send?project=${enc}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role, message })
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      console.error(`Error: ${data.error}`)
+      process.exit(1)
     }
-  } catch {}
-
-  if (!taskFile) {
-    console.error(`No in-progress task found for role '${role}' in project '${project.name}'.`)
+    console.log(`Message sent to ${role} in project '${project.name}'.`)
+  } catch (err) {
+    console.error(`Failed to reach server. Is the hub running? (ai-company start)`)
+    console.error(`  ${err.message}`)
     process.exit(1)
   }
-
-  const existing = readFileSync(taskFile, 'utf8')
-  writeFileSync(taskFile, existing + `\n\n## Human Input\n\n${message}\n`)
-  console.log(`Message sent to ${role} via ${basename(taskFile)}`)
 }
 
 async function cmdInit(args) {

@@ -9,6 +9,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 export function createWebServer(projectStore, { port = 4000 } = {}) {
   const app = express()
 
+  app.use(express.json())
+
   // Dashboard and root redirect
   app.use('/dashboard', express.static(join(__dirname, '../dashboard')))
   app.get('/', (req, res) => res.redirect('/dashboard'))
@@ -54,6 +56,22 @@ export function createWebServer(projectStore, { port = 4000 } = {}) {
     const rawLimit = parseInt(req.query.limit ?? '50', 10)
     const limit = isNaN(rawLimit) ? 50 : rawLimit
     res.json(project.logger.get(limit))
+  })
+
+  app.post('/api/send', (req, res) => {
+    const project = requireProject(req, res)
+    if (!project) return
+    const { role, message } = req.body ?? {}
+    if (!role || !message) {
+      res.status(400).json({ error: 'role and message are required' })
+      return
+    }
+    try {
+      project.roleManager.sendInput(role, message)
+      res.json({ ok: true })
+    } catch (err) {
+      res.status(400).json({ error: err.message })
+    }
   })
 
   app.post('/api/next-id', (req, res) => {

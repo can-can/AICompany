@@ -41,6 +41,12 @@
     .role-state.working { color: #ffa657; }
     .role-state.waiting_human { color: #f85149; }
     .role-meta { font-size: 11px; color: #8b949e; }
+    .agent-messages { margin-top: 8px; max-height: 120px; overflow-y: auto; background: #0d1117; border-radius: 4px; padding: 8px; font-size: 11px; color: #c9d1d9; white-space: pre-wrap; word-break: break-word; }
+    .human-input-row { display: flex; gap: 6px; margin-top: 8px; }
+    .human-input-row input { flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 6px 8px; color: #e6edf3; font-size: 12px; outline: none; }
+    .human-input-row input:focus { border-color: #58a6ff; }
+    .human-input-row button { background: #238636; color: #fff; border: none; border-radius: 4px; padding: 6px 12px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+    .human-input-row button:hover { background: #2ea043; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th { text-align: left; padding: 8px 12px; color: #8b949e; font-weight: normal; border-bottom: 1px solid #21262d; }
     td { padding: 8px 12px; border-bottom: 1px solid #21262d; }
@@ -149,15 +155,49 @@
       return { free: '✓ free', working: '⟳ working', waiting_human: '⚠ waiting', ready: '✓ ready' }[s] || s
     }
 
+    async function sendHumanInput(project, role, inputEl) {
+      const message = inputEl.value.trim()
+      if (!message) return
+      inputEl.value = ''
+      inputEl.disabled = true
+      try {
+        const res = await fetch(`/api/send?project=${encodeURIComponent(project)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role, message })
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          alert(err.error || 'Failed to send')
+        }
+      } catch (e) {
+        alert('Failed to send: ' + e.message)
+      } finally {
+        inputEl.disabled = false
+        inputEl.focus()
+        refresh()
+      }
+    }
+
     function renderRoles(projectName, roles) {
       const container = document.getElementById('role-cards')
       const waiting = []
       container.innerHTML = Object.entries(roles).map(([name, r]) => {
         if (r.state === 'waiting_human') waiting.push({ project: projectName, role: name, task: r.activeTask })
+        const isWaiting = r.state === 'waiting_human'
+        const lastMsg = isWaiting && r.lastMessages?.length
+          ? r.lastMessages[r.lastMessages.length - 1]
+          : null
         return `<div class="role-card ${esc(r.state)}">
           <div class="role-name">${esc(name)}</div>
           <div class="role-state ${esc(r.state)}">${esc(stateLabel(r.state))}</div>
           <div class="role-meta">${r.activeTask ? `#${esc(r.activeTask.id)} ${esc(r.activeTask.title)}` : 'No active task'}<br>queue: ${esc(r.queueDepth)}</div>
+          ${lastMsg ? `<div class="agent-messages">${esc(lastMsg)}</div>` : ''}
+          ${isWaiting ? `<div class="human-input-row">
+            <input type="text" placeholder="Reply to ${esc(name)}..." id="input-${esc(name)}"
+              onkeydown="if(event.key==='Enter')this.nextElementSibling.click()">
+            <button onclick="sendHumanInput('${esc(projectName)}','${esc(name)}',document.getElementById('input-${esc(name)}'))">Send</button>
+          </div>` : ''}
         </div>`
       }).join('')
 
@@ -166,7 +206,7 @@
         banner.style.display = 'block'
         banner.innerHTML = '⚠ Waiting for human input: ' + waiting.map(w =>
           `<strong>${esc(w.project)} › ${esc(w.role)}</strong>${w.task ? ` on #${esc(w.task.id)} "${esc(w.task.title)}"` : ''}`
-        ).join(', ') + ` — run <code>ai-company send ${esc(waiting[0].role)} "your message" --project ${esc(waiting[0].project)}</code>`
+        ).join(', ')
       } else {
         banner.style.display = 'none'
       }
