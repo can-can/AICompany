@@ -13,7 +13,7 @@ import {
   type ProjectStatus,
 } from './api'
 
-export function convertMessage(entry: ConversationMessage, index: number): ThreadMessageLike {
+export function convertMessage(entry: ConversationMessage, _index: number): ThreadMessageLike {
   return {
     id: entry.id,
     role: entry.role === 'user' ? 'user' : 'assistant',

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AssistantRuntimeProvider,
   ThreadPrimitive,
@@ -70,8 +70,32 @@ function ThreadMessages() {
   return <AssistantMessage />
 }
 
+function LoadMoreButton({ hasMore, onLoadMore }: { hasMore: boolean; onLoadMore: () => void }) {
+  const [loading, setLoading] = useState(false)
+
+  const handleClick = async () => {
+    setLoading(true)
+    await onLoadMore()
+    setLoading(false)
+  }
+
+  if (!hasMore) return null
+
+  return (
+    <div className="flex justify-center py-3">
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400"
+      >
+        {loading ? 'Loading...' : 'Load older messages'}
+      </button>
+    </div>
+  )
+}
+
 export default function ChatThread({ project, role, onStatusChange }: { project: string; role: string; onStatusChange?: (status: ProjectStatus | null) => void }) {
-  const { runtime, roleStatus, projectStatus, canSend } = useAICompanyRuntime(project, role)
+  const { runtime, roleStatus, projectStatus, canSend, hasMore, loadMore } = useAICompanyRuntime(project, role)
 
   useEffect(() => {
     onStatusChange?.(projectStatus)
@@ -81,6 +105,7 @@ export default function ChatThread({ project, role, onStatusChange }: { project:
     <div className="flex flex-col h-full">
       <AssistantRuntimeProvider runtime={runtime}>
         <div className="flex-1 overflow-y-auto">
+          <LoadMoreButton hasMore={hasMore} onLoadMore={loadMore} />
           <ThreadPrimitive.Viewport className="flex flex-col">
             <ThreadPrimitive.Messages>
               {() => <ThreadMessages />}
