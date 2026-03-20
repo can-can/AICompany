@@ -1,7 +1,9 @@
+import { EventEmitter } from 'node:events'
 import { priorityOrder } from './task-parser.js'
 
 export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
   const runners = {}
+  const emitter = new EventEmitter()
 
   for (const role of roles) {
     runners[role] = {
@@ -13,7 +15,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
       dispatchChain: Promise.resolve(),
       _idleResolvers: [],
       lastMessages: [],   // last assistant messages from SDK (shown on dashboard)
-      inputQueue: []       // human messages queued while agent is busy
+      inputQueue: [],      // human messages queued while agent is busy
     }
   }
 
@@ -51,9 +53,14 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
           runner.state = 'working'
           runner.sdkInFlight = true
           try {
-            const result = await sdkRunner(fresh, role, runner.sessionId, { prompt: humanMsg })
+            const result = await sdkRunner(fresh, role, runner.sessionId, {
+              prompt: humanMsg,
+              onMessage: (msg) => emitter.emit('message', { role, ...msg })
+            })
             setSessionId(role, result?.sessionId)
-            if (result?.messages?.length) runner.lastMessages = result.messages
+            if (result?.messages?.length) {
+              runner.lastMessages = result.messages
+            }
           } catch (err) {
             logger.add('error', role, `sdk error on task #${fresh.id}: ${err.message}`)
           } finally {
@@ -85,9 +92,13 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
     logger.add('info', role, `dispatching task #${next.id}: ${next.title}`)
 
     try {
-      const result = await sdkRunner(next, role, runner.sessionId)
+      const result = await sdkRunner(next, role, runner.sessionId, {
+        onMessage: (msg) => emitter.emit('message', { role, ...msg })
+      })
       setSessionId(role, result?.sessionId)
-      if (result?.messages?.length) runner.lastMessages = result.messages
+      if (result?.messages?.length) {
+        runner.lastMessages = result.messages
+      }
     } catch (err) {
       logger.add('error', role, `sdk error on task #${next.id}: ${err.message}`)
     } finally {
@@ -124,6 +135,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
   function sendInput(role, message) {
     const runner = getRunner(role)
     runner.inputQueue.push(message)
+    emitter.emit('message', { role, type: 'user', text: message })
     if (runner.state === 'waiting_human') {
       // Kick dispatch to pick up the queued input
       scheduleDispatch(role)
@@ -141,7 +153,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
         state: runner.state,
         activeTask: runner.currentTask ? { id: runner.currentTask.id, title: runner.currentTask.title } : null,
         queueDepth: runner.queue.length,
-        lastMessages: runner.lastMessages
+        lastMessages: runner.lastMessages,
       }
     }
     return result
@@ -187,5 +199,42 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
     return result
   }
 
-  return { enqueue, getState, getStatus, scheduleDispatch, sendInput, loadSessions, getSessions, waitIdle }
+  function restoreInProgressTasks(tasks) {
+    for (const task of tasks) {
+      if (task.status !== 'in_progress' || !task.to) continue
+      const runner = runners[task.to]
+      if (!runner) continue
+      if (runner.currentTask) continue
+      runner.currentTask = task
+      runner.state = 'waiting_human'
+      logger.add('info', task.to, `restored waiting_human for task #${task.id}: ${task.title}`)
+    }
+  }
+
+  async function initializeSessions() {
+    const promises = []
+    for (const [role, runner] of Object.entries(runners)) {
+      if (!runner.sessionId) {
+        promises.push(
+          (async () => {
+            logger.add('info', role, 'initializing session...')
+            try {
+              const result = await sdkRunner(null, role, null, {
+                prompt: `You are the ${role}. Session initialized. Await tasks.`
+              })
+              if (result?.sessionId) {
+                runner.sessionId = result.sessionId
+                logger.add('info', role, 'session initialized')
+              }
+            } catch (err) {
+              logger.add('error', role, `session init failed: ${err.message}`)
+            }
+          })()
+        )
+      }
+    }
+    await Promise.all(promises)
+  }
+
+  return { enqueue, getState, getStatus, scheduleDispatch, sendInput, loadSessions, getSessions, initializeSessions, restoreInProgressTasks, waitIdle, emitter }
 }

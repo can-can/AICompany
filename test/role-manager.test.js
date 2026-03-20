@@ -136,6 +136,36 @@ test('sendInput queues message when agent is busy', async () => {
   assert.equal(mgr.getState('engineer'), 'free')
 })
 
+test('restoreInProgressTasks sets waiting_human for in_progress tasks', () => {
+  const mgr = createRoleManager(['engineer', 'pm'], makeMockSdk(), makeMockReadTask(), createLogger())
+  const tasks = [
+    makeTask({ id: '014', to: 'pm', status: 'in_progress', title: 'Plan feature' }),
+    makeTask({ id: '015', to: 'engineer', status: 'done', title: 'Done task' }),
+  ]
+  mgr.restoreInProgressTasks(tasks)
+  assert.equal(mgr.getState('pm'), 'waiting_human')
+  assert.equal(mgr.getStatus().pm.activeTask.id, '014')
+  // engineer should remain free (task is done, not in_progress)
+  assert.equal(mgr.getState('engineer'), 'free')
+})
+
+test('initializeSessions creates sessions for roles without one', async () => {
+  const sdk = makeMockSdk('done')
+  const mgr = createRoleManager(['engineer', 'pm'], sdk, makeMockReadTask(), createLogger())
+  // Pre-load a session for pm only
+  mgr.loadSessions({ pm: 'existing-sess' })
+
+  await mgr.initializeSessions()
+
+  const sessions = mgr.getSessions()
+  // engineer should have gotten a new session, pm should keep existing
+  assert.ok(sessions.engineer, 'engineer should have a session')
+  assert.equal(sessions.pm, 'existing-sess')
+  // Only one SDK call (for engineer, not pm)
+  assert.equal(sdk.calls.length, 1)
+  assert.equal(sdk.calls[0].role, 'engineer')
+})
+
 test('lastMessages captured from SDK result', async () => {
   const sdk = makeMockSdk('done')
   const mgr = createRoleManager(['engineer'], sdk, makeMockReadTask('done'), createLogger())
@@ -143,4 +173,32 @@ test('lastMessages captured from SDK result', async () => {
   await mgr.waitIdle('engineer')
   const status = mgr.getStatus()
   assert.deepEqual(status.engineer.lastMessages, ['agent reply'])
+})
+
+test('emitter fires message events during SDK dispatch', async () => {
+  const receivedEvents = []
+  const sdk = async (task, role, sessionId, opts) => {
+    opts?.onMessage?.({ type: 'assistant', text: 'hello from agent', sessionId: 'sess-eng' })
+    return { sessionId: 'sess-eng', resultStatus: 'done', messages: ['hello from agent'] }
+  }
+  const mgr = createRoleManager(['engineer'], sdk, makeMockReadTask('done'), createLogger())
+  mgr.emitter.on('message', (evt) => receivedEvents.push(evt))
+  mgr.enqueue(makeTask({ to: 'engineer' }))
+  await mgr.waitIdle('engineer')
+  assert.equal(receivedEvents.length, 1)
+  assert.equal(receivedEvents[0].role, 'engineer')
+  assert.equal(receivedEvents[0].text, 'hello from agent')
+  assert.equal(receivedEvents[0].type, 'assistant')
+})
+
+test('sendInput emits human message to emitter immediately', () => {
+  const receivedEvents = []
+  const mgr = createRoleManager(['engineer'], makeMockSdk(), makeMockReadTask('in_progress'), createLogger())
+  mgr.emitter.on('message', (evt) => receivedEvents.push(evt))
+  mgr.restoreInProgressTasks([makeTask({ to: 'engineer', status: 'in_progress' })])
+  mgr.sendInput('engineer', 'hello from human')
+  assert.equal(receivedEvents.length, 1)
+  assert.equal(receivedEvents[0].role, 'engineer')
+  assert.equal(receivedEvents[0].text, 'hello from human')
+  assert.equal(receivedEvents[0].type, 'user')
 })

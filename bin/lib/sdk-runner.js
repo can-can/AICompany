@@ -18,7 +18,7 @@ export function buildPrompt(task, role, projectDir) {
 }
 
 export function createSdkRunner(projectDir, sessionsPath) {
-  async function runAgent(task, role, sessionId, { prompt: overridePrompt } = {}) {
+  async function runAgent(task, role, sessionId, { prompt: overridePrompt, onMessage } = {}) {
     // Dynamic import to avoid top-level SDK load errors if not configured
     const { query } = await import('@anthropic-ai/claude-agent-sdk')
 
@@ -43,7 +43,17 @@ export function createSdkRunner(projectDir, sessionsPath) {
         const text = Array.isArray(message.content)
           ? message.content.filter(b => b.type === 'text').map(b => b.text).join('')
           : String(message.content)
-        if (text) messages.push(text)
+        if (text) {
+          messages.push(text)
+          onMessage?.({ type: 'assistant', text, sessionId: lastSessionId })
+        }
+      } else if (message.type === 'user' && message.content) {
+        const text = Array.isArray(message.content)
+          ? message.content.filter(b => b.type === 'text').map(b => b.text).join('')
+          : String(message.content)
+        if (text) {
+          onMessage?.({ type: 'user', text, sessionId: lastSessionId })
+        }
       }
     }
 
