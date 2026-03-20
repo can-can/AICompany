@@ -1,43 +1,131 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   useExternalStoreRuntime,
   type ThreadMessageLike,
   type AppendMessage,
 } from '@assistant-ui/react'
-import { fetchStatus, sendMessage, type RoleStatus, type ProjectStatus } from './api'
+import {
+  fetchStatus,
+  fetchConversation,
+  sendMessage,
+  type ConversationMessage,
+  type RoleStatus,
+  type ProjectStatus,
+} from './api'
 
-type HistoryEntry = { from: 'agent' | 'human'; text: string; timestamp: number }
-
-export function convertMessage(entry: HistoryEntry, index: number): ThreadMessageLike {
+export function convertMessage(entry: ConversationMessage, index: number): ThreadMessageLike {
   return {
-    id: `msg-${index}`,
-    role: entry.from === 'human' ? 'user' : 'assistant',
+    id: entry.id,
+    role: entry.role === 'user' ? 'user' : 'assistant',
     content: [{ type: 'text' as const, text: entry.text }],
-    createdAt: new Date(entry.timestamp),
   }
 }
 
 export function useAICompanyRuntime(project: string, role: string) {
-  const [messages, setMessages] = useState<HistoryEntry[]>([])
+  const [messages, setMessages] = useState<ConversationMessage[]>([])
   const [roleStatus, setRoleStatus] = useState<RoleStatus | null>(null)
   const [projectStatus, setProjectStatus] = useState<ProjectStatus | null>(null)
+  const [hasMore, setHasMore] = useState(false)
+  // Track the oldest REST-fetched message ID for pagination cursoring.
+  // SSE messages get synthetic IDs that don't exist in the SDK transcript,
+  // so we must never use them as the `before` cursor.
+  const oldestRestIdRef = useRef<string | null>(null)
 
+  // Load initial page of messages
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const page = await fetchConversation(project, role)
+      if (cancelled) return
+      setMessages(page.messages)
+      setHasMore(page.hasMore)
+      if (page.messages.length > 0) {
+        oldestRestIdRef.current = page.messages[0].id
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [project, role])
+
+  // SSE subscription for real-time messages and state updates
+  useEffect(() => {
+    const params = new URLSearchParams({ project, role })
+    const sse = new EventSource(`/api/conversation/stream?${params}`)
+
+    sse.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+
+      if (data.type === 'connected') {
+        // Initial connection includes current state
+        if (data.state) {
+          setRoleStatus(prev => {
+            if (prev) return { ...prev, state: data.state }
+            // Bootstrap a minimal RoleStatus if we haven't polled yet
+            return { state: data.state, activeTask: null, queueDepth: 0, lastMessages: [] }
+          })
+        }
+        return
+      }
+
+      if (data.type === 'state') {
+        setRoleStatus(prev => {
+          if (prev) return { ...prev, state: data.state }
+          return { state: data.state, activeTask: null, queueDepth: 0, lastMessages: [] }
+        })
+        return
+      }
+
+      // Real-time message from SDK or sendInput
+      if (data.type === 'assistant' || data.type === 'user') {
+        const msg: ConversationMessage = {
+          role: data.type,
+          id: 'sse-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+          text: data.text,
+        }
+        setMessages(prev => {
+          // Deduplicate: skip if the last message has the same text and role
+          const last = prev[prev.length - 1]
+          if (last && last.text === msg.text && last.role === msg.role) return prev
+          return [...prev, msg]
+        })
+      }
+    }
+
+    sse.onerror = () => {
+      // EventSource auto-reconnects; no action needed
+    }
+
+    return () => sse.close()
+  }, [project, role])
+
+  // Poll status (for activeTask, queueDepth, etc.) at a slower rate
+  // since state changes now come via SSE
   const poll = useCallback(async () => {
     const data = await fetchStatus(project)
     if (!data) return
     setProjectStatus(data)
     const r = data.roles[role]
-    if (r) {
-      setRoleStatus(r)
-      setMessages(r.conversationHistory)
-    }
+    if (r) setRoleStatus(r)
   }, [project, role])
 
   useEffect(() => {
     poll()
-    const id = setInterval(poll, 3000)
+    const id = setInterval(poll, 5000)
     return () => clearInterval(id)
   }, [poll])
+
+  // Load older messages (scroll-up pagination)
+  // Uses oldestRestIdRef as cursor instead of messages[0].id, because
+  // SSE messages have synthetic IDs that don't exist in the SDK transcript.
+  const loadMore = useCallback(async () => {
+    if (!hasMore || !oldestRestIdRef.current) return
+    const page = await fetchConversation(project, role, 10, oldestRestIdRef.current)
+    setMessages(prev => [...page.messages, ...prev])
+    setHasMore(page.hasMore)
+    if (page.messages.length > 0) {
+      oldestRestIdRef.current = page.messages[0].id
+    }
+  }, [project, role, hasMore])
 
   const isRunning = roleStatus?.state === 'working' || roleStatus?.state === 'ready'
   const canSend = roleStatus?.state === 'waiting_human'
@@ -46,9 +134,9 @@ export function useAICompanyRuntime(project: string, role: string) {
     if (!canSend) return
     const textPart = message.content.find((c) => c.type === 'text')
     if (!textPart || textPart.type !== 'text') return
+    // Human message will arrive via SSE (emitted by sendInput on the server)
     await sendMessage(project, role, textPart.text)
-    await poll()
-  }, [project, role, poll, canSend])
+  }, [project, role, canSend])
 
   const runtime = useExternalStoreRuntime({
     messages,
@@ -57,5 +145,5 @@ export function useAICompanyRuntime(project: string, role: string) {
     onNew,
   })
 
-  return { runtime, roleStatus, projectStatus, canSend }
+  return { runtime, roleStatus, projectStatus, canSend, hasMore, loadMore }
 }
