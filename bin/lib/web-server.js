@@ -161,7 +161,7 @@ export function createWebServer(projectStore, { port = 4000 } = {}) {
     res.sendFile(join(__dirname, '..', '..', 'dashboard', 'dist', 'index.html'))
   })
 
-  const server = app.listen(port)
+  const server = app.listen(port, '0.0.0.0')
   server.on('error', (err) => {
     console.error(`Web server error: ${err.message}`)
   })
