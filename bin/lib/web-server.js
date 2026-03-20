@@ -111,6 +111,51 @@ export function createWebServer(projectStore, { port = 4000 } = {}) {
     }
   })
 
+  app.get('/api/conversation/stream', (req, res) => {
+    const project = requireProject(req, res)
+    if (!project) return
+    const { role } = req.query
+    if (!role) {
+      res.status(400).json({ error: 'role query parameter required' })
+      return
+    }
+
+    // SSE headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    })
+    res.flushHeaders()
+
+    // Send initial connection event with current state
+    const initialState = project.roleManager.getState(role)
+    res.write(`data: ${JSON.stringify({ type: 'connected', state: initialState })}\n\n`)
+
+    // Subscribe to role-manager's emitter for real-time messages
+    const onMessage = (evt) => {
+      if (evt.role !== role) return
+      res.write(`data: ${JSON.stringify(evt)}\n\n`)
+    }
+    project.roleManager.emitter.on('message', onMessage)
+
+    // Periodic state pings so dashboard knows when agent starts/stops
+    const statusInterval = setInterval(() => {
+      try {
+        const state = project.roleManager.getState(role)
+        res.write(`data: ${JSON.stringify({ type: 'state', state })}\n\n`)
+      } catch {
+        // role may not exist anymore
+      }
+    }, 2000)
+
+    // Cleanup on disconnect
+    req.on('close', () => {
+      project.roleManager.emitter.off('message', onMessage)
+      clearInterval(statusInterval)
+    })
+  })
+
   // SPA fallback — must be last route
   app.get('*', (req, res) => {
     res.sendFile(join(__dirname, '..', '..', 'dashboard', 'dist', 'index.html'))
