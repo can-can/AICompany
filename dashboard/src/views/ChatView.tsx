@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { fetchStatus, type ProjectStatus } from '../lib/api'
+import type { ProjectStatus } from '../lib/api'
 import RoleSidebar from '../components/RoleSidebar'
 import ChatThread from '../components/ChatThread'
 
@@ -8,14 +8,9 @@ export default function ChatView() {
   const { project, role } = useParams<{ project: string; role: string }>()
   const [status, setStatus] = useState<ProjectStatus | null>(null)
 
-  useEffect(() => {
-    if (!project) return
-    fetchStatus(project).then((s) => s && setStatus(s))
-    const id = setInterval(() => {
-      fetchStatus(project).then((s) => s && setStatus(s))
-    }, 3000)
-    return () => clearInterval(id)
-  }, [project])
+  const handleStatusChange = useCallback((s: ProjectStatus | null) => {
+    if (s) setStatus(s)
+  }, [])
 
   const activeTask = status?.roles[role!]?.activeTask
 
@@ -36,7 +31,7 @@ export default function ChatView() {
       <div className="flex flex-1 overflow-hidden">
         <RoleSidebar status={status} />
         <main className="flex-1 flex flex-col overflow-hidden">
-          {project && role && <ChatThread project={project} role={role} />}
+          {project && role && <ChatThread key={role} project={project} role={role} onStatusChange={handleStatusChange} />}
         </main>
       </div>
     </div>

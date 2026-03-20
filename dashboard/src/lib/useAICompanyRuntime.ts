@@ -4,7 +4,7 @@ import {
   type ThreadMessageLike,
   type AppendMessage,
 } from '@assistant-ui/react'
-import { fetchStatus, sendMessage, type RoleStatus } from './api'
+import { fetchStatus, sendMessage, type RoleStatus, type ProjectStatus } from './api'
 
 type HistoryEntry = { from: 'agent' | 'human'; text: string; timestamp: number }
 
@@ -20,10 +20,12 @@ export function convertMessage(entry: HistoryEntry, index: number): ThreadMessag
 export function useAICompanyRuntime(project: string, role: string) {
   const [messages, setMessages] = useState<HistoryEntry[]>([])
   const [roleStatus, setRoleStatus] = useState<RoleStatus | null>(null)
+  const [projectStatus, setProjectStatus] = useState<ProjectStatus | null>(null)
 
   const poll = useCallback(async () => {
     const data = await fetchStatus(project)
     if (!data) return
+    setProjectStatus(data)
     const r = data.roles[role]
     if (r) {
       setRoleStatus(r)
@@ -55,5 +57,5 @@ export function useAICompanyRuntime(project: string, role: string) {
     onNew,
   })
 
-  return { runtime, roleStatus, canSend }
+  return { runtime, roleStatus, projectStatus, canSend }
 }

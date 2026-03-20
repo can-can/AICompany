@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import {
   AssistantRuntimeProvider,
   ThreadPrimitive,
@@ -6,11 +7,12 @@ import {
   ComposerPrimitive,
   useMessage,
 } from '@assistant-ui/react'
+import type { ProjectStatus } from '../lib/api'
 import { useAICompanyRuntime } from '../lib/useAICompanyRuntime'
 
 const statusLabels: Record<string, string> = {
   working: 'Agent is working...',
-  free: 'Agent is idle -- no active task',
+  free: 'Agent is idle \u2014 no active task',
   ready: 'Agent is finishing up...',
   waiting_human: '',
 }
@@ -68,8 +70,12 @@ function ThreadMessages() {
   return <AssistantMessage />
 }
 
-export default function ChatThread({ project, role }: { project: string; role: string }) {
-  const { runtime, roleStatus, canSend } = useAICompanyRuntime(project, role)
+export default function ChatThread({ project, role, onStatusChange }: { project: string; role: string; onStatusChange?: (status: ProjectStatus | null) => void }) {
+  const { runtime, roleStatus, projectStatus, canSend } = useAICompanyRuntime(project, role)
+
+  useEffect(() => {
+    onStatusChange?.(projectStatus)
+  }, [projectStatus, onStatusChange])
 
   return (
     <div className="flex flex-col h-full">
