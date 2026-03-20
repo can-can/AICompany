@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchProjects, fetchStatus, fetchTasks, fetchLogs, sendMessage } from '../src/lib/api'
+import { fetchProjects, fetchStatus, fetchTasks, fetchLogs, sendMessage, fetchConversation } from '../src/lib/api'
 
 beforeEach(() => {
   vi.restoreAllMocks()
@@ -88,5 +88,40 @@ describe('sendMessage', () => {
       new Response(JSON.stringify({ error: 'bad request' }), { status: 400 })
     )
     await expect(sendMessage('myapp', 'pm', '')).rejects.toThrow('bad request')
+  })
+})
+
+describe('fetchConversation', () => {
+  it('returns paginated messages', async () => {
+    const data = {
+      messages: [
+        { role: 'user', id: 'u1', text: 'Hello' },
+        { role: 'assistant', id: 'u2', text: 'Hi there' },
+      ],
+      hasMore: true,
+    }
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(data), { status: 200 })
+    )
+    const result = await fetchConversation('myapp', 'pm', 10)
+    expect(result.messages).toHaveLength(2)
+    expect(result.hasMore).toBe(true)
+    expect(fetch).toHaveBeenCalledWith('/api/conversation?project=myapp&role=pm&limit=10')
+  })
+
+  it('passes before cursor when provided', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ messages: [], hasMore: false }), { status: 200 })
+    )
+    await fetchConversation('myapp', 'pm', 5, 'cursor-uuid')
+    expect(fetch).toHaveBeenCalledWith('/api/conversation?project=myapp&role=pm&limit=5&before=cursor-uuid')
+  })
+
+  it('returns empty on error', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('', { status: 500 })
+    )
+    const result = await fetchConversation('myapp', 'pm')
+    expect(result).toEqual({ messages: [], hasMore: false })
   })
 })

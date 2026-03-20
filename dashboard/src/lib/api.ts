@@ -9,7 +9,6 @@ export type RoleStatus = {
   activeTask: { id: string; title: string } | null
   queueDepth: number
   lastMessages: string[]
-  conversationHistory: { from: 'agent' | 'human'; text: string; timestamp: number }[]
 }
 
 export type ProjectStatus = {
@@ -66,4 +65,28 @@ export async function sendMessage(project: string, role: string, message: string
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Failed to send')
   return data
+}
+
+export type ConversationMessage = {
+  role: 'user' | 'assistant'
+  id: string
+  text: string
+}
+
+export type ConversationPage = {
+  messages: ConversationMessage[]
+  hasMore: boolean
+}
+
+export async function fetchConversation(
+  project: string,
+  role: string,
+  limit = 10,
+  before?: string,
+): Promise<ConversationPage> {
+  const params = new URLSearchParams({ project, role, limit: String(limit) })
+  if (before) params.set('before', before)
+  const res = await fetch(`/api/conversation?${params}`)
+  if (!res.ok) return { messages: [], hasMore: false }
+  return res.json()
 }
