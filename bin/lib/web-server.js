@@ -11,9 +11,8 @@ export function createWebServer(projectStore, { port = 4000 } = {}) {
 
   app.use(express.json())
 
-  // Dashboard and root redirect
-  app.use('/dashboard', express.static(join(__dirname, '../dashboard')))
-  app.get('/', (req, res) => res.redirect('/dashboard'))
+  // Serve React dashboard from built output
+  app.use(express.static(join(__dirname, '..', '..', 'dashboard', 'dist')))
 
   // Helper: resolve project from ?project= query param, send error if invalid
   function requireProject(req, res) {
@@ -81,6 +80,11 @@ export function createWebServer(projectStore, { port = 4000 } = {}) {
     mkdirSync(tasksDir, { recursive: true })
     const id = getNextId(tasksDir)
     res.json({ id })
+  })
+
+  // SPA fallback — must be last route
+  app.get('*', (req, res) => {
+    res.sendFile(join(__dirname, '..', '..', 'dashboard', 'dist', 'index.html'))
   })
 
   const server = app.listen(port)
