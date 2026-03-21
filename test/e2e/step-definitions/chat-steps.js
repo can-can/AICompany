@@ -107,6 +107,23 @@ Then('an assistant message contains a {string} element', async function (tag) {
   await expect(this.page.locator(`[class*="justify-start"] ${tag}`).first()).toBeVisible({ timeout: 5000 })
 })
 
+Then('the Stop button is visible', async function () {
+  await expect(this.page.getByRole('button', { name: 'Stop' })).toBeVisible({ timeout: 15000 })
+})
+
+Then('the Stop button is not visible', async function () {
+  await expect(this.page.getByRole('button', { name: 'Stop' })).not.toBeVisible({ timeout: 15000 })
+})
+
+When('I click the Stop button', async function () {
+  await this.page.getByRole('button', { name: 'Stop' }).click()
+})
+
+Then('the agent returns to idle', async function () {
+  await expect(this.page.getByText('Agent is working...')).not.toBeVisible({ timeout: 30000 })
+  await expect(this.page.getByText('Agent is finishing up...')).not.toBeVisible({ timeout: 10000 })
+})
+
 Then('no tool call shows {string} status', async function (status) {
   await expect(this.page.getByPlaceholder('Type a message...')).toBeVisible({ timeout: 10000 })
   await expect(this.page.locator('[class*="justify-start"]').first()).toBeVisible({ timeout: 10000 })
