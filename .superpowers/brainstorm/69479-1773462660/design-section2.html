@@ -1,0 +1,78 @@
+<h2>Full Design — Section 2: Role State Machine & Dispatch Logic</h2>
+<p class="subtitle">How the coordinator decides when to send work to an agent</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">Role State Machine (per role)</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:12px;background:#0d1117;color:#e6edf3;padding:16px">
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+        <div style="background:#0d3321;padding:12px;border-radius:6px;border:2px solid #3fb950;text-align:center">
+          <div style="color:#3fb950;font-weight:bold;font-size:14px">free</div>
+          <div style="color:#8b949e;font-size:10px;margin-top:6px">No task running<br>Queue may have items<br>SDK not in flight</div>
+        </div>
+        <div style="background:#2d2000;padding:12px;border-radius:6px;border:2px solid #ffa657;text-align:center">
+          <div style="color:#ffa657;font-weight:bold;font-size:14px">working</div>
+          <div style="color:#8b949e;font-size:10px;margin-top:6px">sdk.query() in flight<br>Task status: in_progress<br>Do not dispatch</div>
+        </div>
+        <div style="background:#3d1414;padding:12px;border-radius:6px;border:2px solid #f85149;text-align:center">
+          <div style="color:#f85149;font-weight:bold;font-size:14px">waiting_human</div>
+          <div style="color:#8b949e;font-size:10px;margin-top:6px">SDK returned BUT<br>task still in_progress<br>⚠️ Alert dashboard</div>
+        </div>
+        <div style="background:#0d1f3d;padding:12px;border-radius:6px;border:2px solid #58a6ff;text-align:center">
+          <div style="color:#58a6ff;font-weight:bold;font-size:14px">ready</div>
+          <div style="color:#8b949e;font-size:10px;margin-top:6px">SDK returned AND<br>task done/rejected<br>Dispatch next now</div>
+        </div>
+      </div>
+
+      <div style="background:#161b22;padding:14px;border-radius:6px;margin-bottom:16px">
+        <div style="color:#58a6ff;font-weight:bold;margin-bottom:10px">State Transitions</div>
+        <div style="font-size:11px;line-height:2.2;color:#8b949e">
+          <span style="color:#3fb950">free</span> &nbsp;+ task in queue &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ pop task, call sdk.query() → <span style="color:#ffa657">working</span><br>
+          <span style="color:#ffa657">working</span> &nbsp;+ sdk.query() returns + task done/rejected &nbsp;→ <span style="color:#58a6ff">ready</span><br>
+          <span style="color:#ffa657">working</span> &nbsp;+ sdk.query() returns + task in_progress &nbsp;&nbsp;→ <span style="color:#f85149">waiting_human</span><br>
+          <span style="color:#58a6ff">ready</span> &nbsp;&nbsp;&nbsp;+ task in queue &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ pop task, call sdk.query() → <span style="color:#ffa657">working</span><br>
+          <span style="color:#58a6ff">ready</span> &nbsp;&nbsp;&nbsp;+ queue empty &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ <span style="color:#3fb950">free</span><br>
+          <span style="color:#f85149">waiting_human</span> + task file updated to done/rejected &nbsp;→ <span style="color:#58a6ff">ready</span> → dispatch next<br>
+          <span style="color:#f85149">waiting_human</span> + human sends message to agent &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ call sdk.query() again → <span style="color:#ffa657">working</span>
+        </div>
+      </div>
+
+      <div style="background:#161b22;padding:14px;border-radius:6px;margin-bottom:16px">
+        <div style="color:#58a6ff;font-weight:bold;margin-bottom:10px">Dispatch Logic (coordinator code sketch)</div>
+        <div style="font-size:11px;color:#e6edf3;line-height:1.8;background:#0d1117;padding:10px;border-radius:4px">
+          <span style="color:#8b949e">// called on: fs.watch event OR sdk.query() completes</span><br>
+          <span style="color:#ff7b72">async function</span> <span style="color:#d2a8ff">tryDispatch</span>(role) {<br>
+          &nbsp;&nbsp;<span style="color:#ff7b72">const</span> runner = roles[role]<br>
+          &nbsp;&nbsp;<span style="color:#ff7b72">if</span> (runner.sdkInFlight) <span style="color:#ff7b72">return</span> &nbsp;<span style="color:#8b949e">// working — do nothing</span><br><br>
+          &nbsp;&nbsp;<span style="color:#ff7b72">const</span> currentTask = runner.currentTask<br>
+          &nbsp;&nbsp;<span style="color:#ff7b72">if</span> (currentTask &amp;&amp; currentTask.status === <span style="color:#a5d6ff">'in_progress'</span>) {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;runner.state = <span style="color:#a5d6ff">'waiting_human'</span> &nbsp;<span style="color:#8b949e">// alert dashboard</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#ff7b72">return</span><br>
+          &nbsp;&nbsp;}<br><br>
+          &nbsp;&nbsp;<span style="color:#ff7b72">const</span> next = runner.queue.shift()<br>
+          &nbsp;&nbsp;<span style="color:#ff7b72">if</span> (!next) { runner.state = <span style="color:#a5d6ff">'free'</span>; <span style="color:#ff7b72">return</span> }<br><br>
+          &nbsp;&nbsp;runner.state = <span style="color:#a5d6ff">'working'</span><br>
+          &nbsp;&nbsp;runner.sdkInFlight = <span style="color:#79c0ff">true</span><br>
+          &nbsp;&nbsp;runner.currentTask = next<br>
+          &nbsp;&nbsp;<span style="color:#ff7b72">const</span> result = <span style="color:#ff7b72">await</span> sdk.<span style="color:#d2a8ff">query</span>(buildPrompt(next), { session_id: role })<br>
+          &nbsp;&nbsp;runner.sdkInFlight = <span style="color:#79c0ff">false</span><br>
+          &nbsp;&nbsp;runner.currentTask = <span style="color:#d2a8ff">rereadTaskFile</span>(next) &nbsp;<span style="color:#8b949e">// check real status</span><br>
+          &nbsp;&nbsp;<span style="color:#d2a8ff">tryDispatch</span>(role) &nbsp;<span style="color:#8b949e">// recurse — check if we can dispatch next</span><br>
+          }
+        </div>
+      </div>
+
+      <div style="background:#161b22;padding:14px;border-radius:6px">
+        <div style="color:#58a6ff;font-weight:bold;margin-bottom:10px">Queue Rules</div>
+        <div style="font-size:11px;line-height:1.9;color:#8b949e">
+          • Tasks enter queue sorted by <span style="color:#e6edf3">priority</span> (high → medium → low) then <span style="color:#e6edf3">created</span> date<br>
+          • A role's queue only holds tasks with <span style="color:#e6edf3">status: pending</span> and <span style="color:#e6edf3">to: &lt;this role&gt;</span><br>
+          • If a task is <span style="color:#f85149">rejected</span>, notify the <span style="color:#e6edf3">from</span> role's queue (same dispatch logic applies)<br>
+          • Queue is rebuilt on server start by scanning all tasks/*.md files
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,145 @@
+<h2>Full Design — Section 3: Web Dashboard</h2>
+<p class="subtitle">Read-only monitoring — auto-refresh every 3s</p>
+
+<div style="margin-bottom:16px;padding:10px 14px;background:#3d1414;border-radius:6px;border-left:4px solid #f85149;font-size:12px">
+  ⚠️ <strong>waiting_human</strong> — engineer is paused on task #003 "Build auth system" — needs your input
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">http://localhost:4000 — AI Company Dashboard</div>
+  <div class="mockup-body" style="background:#0d1117;padding:0;overflow:hidden">
+
+    <!-- Top bar -->
+    <div style="background:#161b22;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #30363d">
+      <div style="font-size:13px;color:#e6edf3;font-weight:bold">AI Company</div>
+      <div style="font-size:11px;color:#8b949e">● live &nbsp;·&nbsp; refreshing every 3s &nbsp;·&nbsp; 5 tasks total</div>
+    </div>
+
+    <!-- Role cards -->
+    <div style="padding:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+
+      <div style="background:#161b22;border-radius:6px;padding:12px;border-top:3px solid #f85149">
+        <div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px">engineer</div>
+        <div style="font-size:12px;color:#f85149;font-weight:bold;margin:4px 0">⚠ waiting_human</div>
+        <div style="font-size:10px;color:#8b949e">Task #003 in_progress<br>queue: 1 pending</div>
+      </div>
+
+      <div style="background:#161b22;border-radius:6px;padding:12px;border-top:3px solid #ffa657">
+        <div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px">pm</div>
+        <div style="font-size:12px;color:#ffa657;font-weight:bold;margin:4px 0">⟳ working</div>
+        <div style="font-size:10px;color:#8b949e">Task #001 in_progress<br>queue: 0 pending</div>
+      </div>
+
+      <div style="background:#161b22;border-radius:6px;padding:12px;border-top:3px solid #3fb950">
+        <div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px">qa</div>
+        <div style="font-size:12px;color:#3fb950;font-weight:bold;margin:4px 0">✓ free</div>
+        <div style="font-size:10px;color:#8b949e">No active task<br>queue: 0 pending</div>
+      </div>
+
+      <div style="background:#161b22;border-radius:6px;padding:12px;border-top:3px solid #3fb950">
+        <div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px">designer</div>
+        <div style="font-size:12px;color:#3fb950;font-weight:bold;margin:4px 0">✓ free</div>
+        <div style="font-size:10px;color:#8b949e">No active task<br>queue: 2 pending</div>
+      </div>
+
+    </div>
+
+    <!-- Task table -->
+    <div style="padding:0 14px 14px">
+      <div style="background:#161b22;border-radius:6px;overflow:hidden">
+        <div style="padding:10px 14px;border-bottom:1px solid #30363d;font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px">Tasks</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead>
+            <tr style="color:#8b949e;border-bottom:1px solid #21262d">
+              <th style="padding:8px 14px;text-align:left;font-weight:normal">ID</th>
+              <th style="padding:8px 14px;text-align:left;font-weight:normal">Title</th>
+              <th style="padding:8px 14px;text-align:left;font-weight:normal">From</th>
+              <th style="padding:8px 14px;text-align:left;font-weight:normal">To</th>
+              <th style="padding:8px 14px;text-align:left;font-weight:normal">Status</th>
+              <th style="padding:8px 14px;text-align:left;font-weight:normal">Priority</th>
+            </tr>
+          </thead>
+          <tbody style="color:#e6edf3">
+            <tr style="border-bottom:1px solid #21262d;background:#1c2128">
+              <td style="padding:8px 14px;color:#8b949e">001</td>
+              <td style="padding:8px 14px">Write project brief</td>
+              <td style="padding:8px 14px;color:#8b949e">human</td>
+              <td style="padding:8px 14px">pm</td>
+              <td style="padding:8px 14px"><span style="color:#ffa657">● in_progress</span></td>
+              <td style="padding:8px 14px;color:#8b949e">high</td>
+            </tr>
+            <tr style="border-bottom:1px solid #21262d">
+              <td style="padding:8px 14px;color:#8b949e">002</td>
+              <td style="padding:8px 14px">Design homepage wireframe</td>
+              <td style="padding:8px 14px;color:#8b949e">pm</td>
+              <td style="padding:8px 14px">designer</td>
+              <td style="padding:8px 14px"><span style="color:#8b949e">○ pending</span></td>
+              <td style="padding:8px 14px;color:#8b949e">medium</td>
+            </tr>
+            <tr style="border-bottom:1px solid #21262d;background:#1c2128">
+              <td style="padding:8px 14px;color:#8b949e">003</td>
+              <td style="padding:8px 14px">Build auth system</td>
+              <td style="padding:8px 14px;color:#8b949e">pm</td>
+              <td style="padding:8px 14px">engineer</td>
+              <td style="padding:8px 14px"><span style="color:#f85149">⚠ in_progress (waiting)</span></td>
+              <td style="padding:8px 14px;color:#8b949e">high</td>
+            </tr>
+            <tr style="border-bottom:1px solid #21262d">
+              <td style="padding:8px 14px;color:#8b949e">004</td>
+              <td style="padding:8px 14px">Write landing copy</td>
+              <td style="padding:8px 14px;color:#8b949e">pm</td>
+              <td style="padding:8px 14px">engineer</td>
+              <td style="padding:8px 14px"><span style="color:#8b949e">○ pending</span></td>
+              <td style="padding:8px 14px;color:#8b949e">medium</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 14px;color:#8b949e">000</td>
+              <td style="padding:8px 14px">Setup project structure</td>
+              <td style="padding:8px 14px;color:#8b949e">human</td>
+              <td style="padding:8px 14px">pm</td>
+              <td style="padding:8px 14px"><span style="color:#3fb950">✓ done</span></td>
+              <td style="padding:8px 14px;color:#8b949e">high</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Log tail -->
+    <div style="padding:0 14px 14px">
+      <div style="background:#161b22;border-radius:6px;overflow:hidden">
+        <div style="padding:10px 14px;border-bottom:1px solid #30363d;font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px">Recent Log</div>
+        <div style="padding:10px 14px;font-family:monospace;font-size:10px;color:#8b949e;line-height:1.8">
+          <span style="color:#3fb950">14:23:01</span> pm &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; task #001 dispatched → sdk.query() started<br>
+          <span style="color:#3fb950">14:23:04</span> engineer &nbsp; task #003 sdk.query() returned — task still in_progress → <span style="color:#f85149">waiting_human</span><br>
+          <span style="color:#3fb950">14:23:04</span> engineer &nbsp; ⚠ alert: agent paused, needs human input<br>
+          <span style="color:#3fb950">14:22:55</span> designer &nbsp; queue updated: 2 pending tasks<br>
+          <span style="color:#3fb950">14:22:47</span> pm &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; task #000 done → notified from: human<br>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px">
+  <div style="background:#161b22;padding:14px;border-radius:6px">
+    <p class="label">API Endpoints (served by company-server)</p>
+    <div style="font-family:monospace;font-size:11px;color:#8b949e;line-height:2;margin-top:8px">
+      GET / &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ dashboard HTML<br>
+      GET /api/status &nbsp;→ all role states + queue depths<br>
+      GET /api/tasks &nbsp;&nbsp;→ all tasks (parsed frontmatter)<br>
+      GET /api/logs &nbsp;&nbsp;&nbsp;→ last 50 log lines
+    </div>
+  </div>
+  <div style="background:#161b22;padding:14px;border-radius:6px">
+    <p class="label">Dashboard behavior</p>
+    <div style="font-size:11px;color:#8b949e;line-height:2;margin-top:8px">
+      • Polls /api/status + /api/tasks every 3s<br>
+      • waiting_human shown as red alert banner at top<br>
+      • Role cards color-coded by state<br>
+      • Task table sortable by status/role<br>
+      • Log tail shows last 50 server events
+    </div>
+  </div>
+</div>

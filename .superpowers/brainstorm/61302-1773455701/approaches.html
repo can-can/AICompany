@@ -1,0 +1,78 @@
+<h2>3 Architectural Approaches</h2>
+<p class="subtitle">Replacing the bash daemon — keeping markdown task files</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Node.js All-in-One Coordinator</h3>
+      <p><strong>One process replaces everything</strong></p>
+      <div style="font-family:monospace;font-size:12px;background:#1a1a2e;color:#e2e8f0;padding:12px;border-radius:6px;margin:8px 0;line-height:1.8">
+        <span style="color:#64b5f6">Human / Web UI</span><br>
+        &nbsp;&nbsp;↓<br>
+        <span style="color:#81c995">company-server (Node.js)</span><br>
+        &nbsp;&nbsp;├─ <span style="color:#ffd54f">fs.watch</span> → task changes → route notifications<br>
+        &nbsp;&nbsp;├─ <span style="color:#ffd54f">HTTP :4000</span> → serves dashboard<br>
+        &nbsp;&nbsp;└─ <span style="color:#ffd54f">tmux send-keys</span> → wake agents (with retry)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+        <span style="color:#ef9a9a">Claude agents (tmux windows)</span><br>
+        &nbsp;&nbsp;└─ read/write tasks/*.md
+      </div>
+      <div class="pros-cons" style="margin-top:8px">
+        <div class="pros"><h4>Pros</h4><ul><li>Single process to manage</li><li>Event-driven (instant response)</li><li>Web dashboard built-in</li><li>No polling, no drift</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Still relies on tmux for agent wake</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Node.js + Per-role Inbox Files</h3>
+      <p><strong>Eliminate tmux dependency entirely</strong></p>
+      <div style="font-family:monospace;font-size:12px;background:#1a1a2e;color:#e2e8f0;padding:12px;border-radius:6px;margin:8px 0;line-height:1.8">
+        <span style="color:#64b5f6">Human / Web UI</span><br>
+        &nbsp;&nbsp;↓<br>
+        <span style="color:#81c995">company-server (Node.js)</span><br>
+        &nbsp;&nbsp;├─ <span style="color:#ffd54f">fs.watch</span> → task changes<br>
+        &nbsp;&nbsp;├─ <span style="color:#ffd54f">HTTP :4000</span> → dashboard<br>
+        &nbsp;&nbsp;└─ writes <span style="color:#ffd54f">roles/&lt;role&gt;/inbox.md</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+        <span style="color:#ef9a9a">Claude agents</span> — CLAUDE.md tells each<br>
+        &nbsp;&nbsp;agent to check inbox.md on startup
+      </div>
+      <div class="pros-cons" style="margin-top:8px">
+        <div class="pros"><h4>Pros</h4><ul><li>No tmux dependency</li><li>Agents pull work, not pushed</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Must update all role CLAUDE.md files</li><li>Agents need manual restart to pick up inbox</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Node.js + Chokidar + Robust Tmux</h3>
+      <p><strong>Minimal change, maximum reliability</strong></p>
+      <div style="font-family:monospace;font-size:12px;background:#1a1a2e;color:#e2e8f0;padding:12px;border-radius:6px;margin:8px 0;line-height:1.8">
+        <span style="color:#64b5f6">Human / Web UI</span><br>
+        &nbsp;&nbsp;↓<br>
+        <span style="color:#81c995">company-server (Node.js)</span><br>
+        &nbsp;&nbsp;├─ <span style="color:#ffd54f">chokidar</span> → real-time file events<br>
+        &nbsp;&nbsp;├─ <span style="color:#ffd54f">HTTP :4000</span> → dashboard<br>
+        &nbsp;&nbsp;└─ tmux send-keys + <span style="color:#ffd54f">exponential backoff</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ persistent retry queue<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+        <span style="color:#ef9a9a">Claude agents (tmux windows)</span>
+      </div>
+      <div class="pros-cons" style="margin-top:8px">
+        <div class="pros"><h4>Pros</h4><ul><li>Most robust file watching (chokidar)</li><li>No CLAUDE.md changes needed</li><li>Proven tmux pattern, just more reliable</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Requires npm install (chokidar dep)</li><li>Still tmux-coupled</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:24px;padding:16px;background:#0f3460;border-radius:8px;border-left:4px solid #81c995">
+  <p class="label">Recommendation</p>
+  <p style="margin:4px 0 0"><strong>Option A</strong> — Node.js all-in-one. Node's built-in <code>fs.watch</code> is event-driven and reliable on macOS. One process to start, monitor, and stop. The tmux coupling is acceptable since agents already run there — the key improvement is replacing bash polling with real-time events and proper error handling.</p>
+</div>

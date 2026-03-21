@@ -1,0 +1,83 @@
+<h2>Full Design — Section 1: Architecture & Components</h2>
+<p class="subtitle">What gets built, what gets replaced, what stays</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">Component Map</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:12px;background:#0d1117;color:#e6edf3;padding:16px;line-height:1.8">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+        <div>
+          <div style="color:#f85149;margin-bottom:8px;font-weight:bold">REMOVED</div>
+          <div style="background:#3d1414;padding:10px;border-radius:6px;font-size:11px;line-height:2">
+            bin/company-daemon &nbsp;&nbsp;<span style="color:#f85149">← deleted</span><br>
+            bin/lib/tmux-helpers.sh &nbsp;<span style="color:#f85149">← deleted</span><br>
+            tmux sessions / windows &nbsp;<span style="color:#f85149">← gone</span><br>
+            bash polling loop &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#f85149">← gone</span>
+          </div>
+        </div>
+
+        <div>
+          <div style="color:#3fb950;margin-bottom:8px;font-weight:bold">ADDED</div>
+          <div style="background:#0d3321;padding:10px;border-radius:6px;font-size:11px;line-height:2">
+            bin/company-server &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#3fb950">← NEW (Node.js)</span><br>
+            bin/dashboard/index.html <span style="color:#3fb950">← NEW (web UI)</span><br>
+            package.json &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#3fb950">← NEW (deps)</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:16px">
+        <div style="color:#ffa657;margin-bottom:8px;font-weight:bold">UPDATED</div>
+        <div style="background:#2d2000;padding:10px;border-radius:6px;font-size:11px;line-height:2">
+          bin/company &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#ffa657">← start/stop now targets company-server, not daemon</span><br>
+          bin/lib/parse-frontmatter.sh &nbsp;<span style="color:#ffa657">← kept (used by company CLI)</span><br>
+          tasks/*.md &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#3fb950">← unchanged format</span><br>
+          roles/*/CLAUDE.md &nbsp;<span style="color:#3fb950">← unchanged</span><br>
+          company.md &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#3fb950">← unchanged</span>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;background:#161b22;padding:12px;border-radius:6px">
+        <div style="color:#58a6ff;font-weight:bold;margin-bottom:10px">company-server internals</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:11px">
+          <div style="background:#0d1117;padding:8px;border-radius:4px">
+            <div style="color:#ffa657;margin-bottom:4px">File Watcher</div>
+            <div style="color:#8b949e">fs.watch on tasks/<br>Fires on any .md change<br>Parses frontmatter<br>Updates role queues</div>
+          </div>
+          <div style="background:#0d1117;padding:8px;border-radius:4px">
+            <div style="color:#ffa657;margin-bottom:4px">Role Manager</div>
+            <div style="color:#8b949e">One runner per role<br>In-memory queue<br>State: free / working /<br>waiting_human / ready</div>
+          </div>
+          <div style="background:#0d1117;padding:8px;border-radius:4px">
+            <div style="color:#ffa657;margin-bottom:4px">Web Server</div>
+            <div style="color:#8b949e">HTTP :4000<br>Serves dashboard HTML<br>GET /api/status<br>GET /api/tasks<br>GET /api/logs</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;background:#161b22;padding:12px;border-radius:6px">
+        <div style="color:#58a6ff;font-weight:bold;margin-bottom:8px">Dependencies (package.json)</div>
+        <div style="font-size:11px;color:#8b949e">
+          <span style="color:#3fb950">@anthropic-ai/claude-agent-sdk</span> — programmatic agent control<br>
+          <span style="color:#3fb950">express</span> (or Node built-in http) — web server<br>
+          <span style="color:#8b949e">No chokidar needed — Node's built-in fs.watch is sufficient on macOS</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:16px;padding:14px;background:#0f3460;border-radius:8px;border-left:4px solid #58a6ff">
+  <p class="label">How company start changes</p>
+  <div style="font-family:monospace;font-size:12px;margin-top:8px;color:#e6edf3">
+    <span style="color:#8b949e"># Before</span><br>
+    company start → tmux new-session + launch claude in N windows + nohup daemon<br><br>
+    <span style="color:#8b949e"># After</span><br>
+    company start → <span style="color:#3fb950">node bin/company-server &amp;</span> (that's it)<br>
+    <span style="color:#8b949e">Agents are launched on-demand by the server when tasks arrive</span>
+  </div>
+</div>

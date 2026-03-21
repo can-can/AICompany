@@ -10,3 +10,5 @@ tasks/.daemon-state
 tasks/.daemon-notify-queue
 tasks/.daemon-heartbeat
 test/e2e/reports/
+.idea/
+*.tsbuildinfo

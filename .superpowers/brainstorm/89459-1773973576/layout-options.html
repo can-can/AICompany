@@ -1,0 +1,87 @@
+<h2>How should the chat panel appear when you click a role?</h2>
+<p class="subtitle">Pick the layout that feels right for having a full conversation with an agent</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Slide-out Panel (Right Side)</h3>
+      <p>Click a role card, a chat panel slides in from the right covering ~40% of the screen. Dashboard stays visible on the left. You can see role status and chat at the same time.</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-body" style="display:flex;gap:0;padding:0;height:180px">
+          <div style="flex:3;padding:12px;border-right:2px solid #30363d;display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:11px;color:#8b949e;text-transform:uppercase">Dashboard</div>
+            <div style="display:flex;gap:8px">
+              <div style="flex:1;background:#21262d;border-radius:6px;padding:8px;font-size:11px;border-top:2px solid #1a7f37">PM - free</div>
+              <div style="flex:1;background:#21262d;border-radius:6px;padding:8px;font-size:11px;border-top:2px solid #cf222e;opacity:0.6">ENG - waiting</div>
+              <div style="flex:1;background:#21262d;border-radius:6px;padding:8px;font-size:11px;border-top:2px solid #1a7f37">QA - free</div>
+            </div>
+            <div style="flex:1;background:#21262d;border-radius:6px;padding:8px;font-size:11px;color:#8b949e">Tasks table...</div>
+          </div>
+          <div style="flex:2;padding:12px;background:#161b22;display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:11px;font-weight:600">Chat with Engineer</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px;justify-content:flex-end">
+              <div style="background:#21262d;border-radius:8px;padding:6px 8px;font-size:10px;align-self:flex-start;max-width:80%">I need clarification on the auth flow...</div>
+              <div style="background:#1a4b77;border-radius:8px;padding:6px 8px;font-size:10px;align-self:flex-end;max-width:80%">Use OAuth2 with PKCE</div>
+            </div>
+            <div style="background:#21262d;border-radius:6px;padding:6px 8px;font-size:10px;color:#8b949e">Type a message...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Full-Screen Chat View</h3>
+      <p>Clicking a role navigates to a dedicated full-screen chat page. A back button returns to the dashboard. Maximum space for conversation, like a proper messaging app.</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-body" style="display:flex;gap:0;padding:0;height:180px">
+          <div style="width:60px;background:#161b22;border-right:2px solid #30363d;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="width:32px;height:32px;border-radius:50%;background:#21262d;font-size:9px;display:flex;align-items:center;justify-content:center">PM</div>
+            <div style="width:32px;height:32px;border-radius:50%;background:#1a4b77;font-size:9px;display:flex;align-items:center;justify-content:center;border:2px solid #58a6ff">ENG</div>
+            <div style="width:32px;height:32px;border-radius:50%;background:#21262d;font-size:9px;display:flex;align-items:center;justify-content:center">QA</div>
+          </div>
+          <div style="flex:1;padding:12px;display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:11px;font-weight:600;padding-bottom:6px;border-bottom:1px solid #30363d">Engineer - #014 Build Auth System</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px;justify-content:flex-end">
+              <div style="background:#21262d;border-radius:8px;padding:6px 8px;font-size:10px;align-self:flex-start;max-width:70%">I've implemented the login flow but need to know which OAuth provider to use...</div>
+              <div style="background:#1a4b77;border-radius:8px;padding:6px 8px;font-size:10px;align-self:flex-end;max-width:70%">Use Google OAuth with PKCE flow</div>
+              <div style="background:#21262d;border-radius:8px;padding:6px 8px;font-size:10px;align-self:flex-start;max-width:70%">Got it. Should I also add GitHub as a second provider?</div>
+            </div>
+            <div style="background:#21262d;border-radius:6px;padding:8px;font-size:10px;color:#8b949e">Type a message...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Modal / Dialog Overlay</h3>
+      <p>Click a role card, a large centered modal opens with the chat. Dashboard is dimmed behind it. Close the modal to return. Quick to open/close.</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-body" style="padding:0;height:180px;position:relative">
+          <div style="padding:12px;opacity:0.3">
+            <div style="font-size:11px;color:#8b949e">Dashboard (dimmed)</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <div style="flex:1;background:#21262d;border-radius:6px;padding:8px;font-size:10px">PM</div>
+              <div style="flex:1;background:#21262d;border-radius:6px;padding:8px;font-size:10px">ENG</div>
+              <div style="flex:1;background:#21262d;border-radius:6px;padding:8px;font-size:10px">QA</div>
+            </div>
+          </div>
+          <div style="position:absolute;top:10%;left:10%;right:10%;bottom:10%;background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+            <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:600"><span>Chat with Engineer</span><span style="cursor:pointer;color:#8b949e">X</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px;justify-content:flex-end">
+              <div style="background:#21262d;border-radius:8px;padding:5px 7px;font-size:9px;align-self:flex-start;max-width:75%">I need clarification on the auth flow...</div>
+              <div style="background:#1a4b77;border-radius:8px;padding:5px 7px;font-size:9px;align-self:flex-end;max-width:75%">Use OAuth2 with PKCE</div>
+            </div>
+            <div style="background:#21262d;border-radius:6px;padding:5px 7px;font-size:9px;color:#8b949e">Type a message...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

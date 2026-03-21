@@ -1,0 +1,109 @@
+<h2>New Architecture: Agent SDK-Driven Coordinator</h2>
+<p class="subtitle">Reliable agent state via programmatic SDK control — no guessing</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">System Architecture</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:12px;line-height:2;padding:16px;background:#0d1117;color:#e6edf3">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+        <div style="background:#161b22;padding:12px;border-radius:6px;border:1px solid #30363d">
+          <div style="color:#58a6ff;font-weight:bold;margin-bottom:8px">tasks/</div>
+          <div style="color:#8b949e;font-size:11px">Markdown files<br>(unchanged format)</div>
+          <div style="color:#3fb950;margin-top:8px">001-design-homepage.md<br>002-build-auth.md<br>003-write-copy.md</div>
+        </div>
+        <div style="background:#161b22;padding:12px;border-radius:6px;border:2px solid #58a6ff">
+          <div style="color:#58a6ff;font-weight:bold;margin-bottom:8px">company-server (Node.js)</div>
+          <div style="color:#8b949e;font-size:11px">Single process — coordinator + web</div>
+          <div style="color:#ffa657;margin-top:6px">fs.watch → task events</div>
+          <div style="color:#ffa657">Role queues (in-memory)</div>
+          <div style="color:#ffa657">SDK runner per role</div>
+          <div style="color:#ffa657">HTTP :4000 → dashboard</div>
+        </div>
+        <div style="background:#161b22;padding:12px;border-radius:6px;border:1px solid #30363d">
+          <div style="color:#58a6ff;font-weight:bold;margin-bottom:8px">Web Dashboard</div>
+          <div style="color:#8b949e;font-size:11px">Read-only monitoring</div>
+          <div style="color:#3fb950;margin-top:8px">Role status (live)<br>Task queue depth<br>Agent output stream<br>Logs</div>
+        </div>
+      </div>
+
+      <div style="background:#161b22;padding:16px;border-radius:6px;border:1px solid #30363d">
+        <div style="color:#58a6ff;font-weight:bold;margin-bottom:12px">Per-Role Dispatch Loop (the key)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div style="color:#e6edf3;margin-bottom:6px">Old way (unreliable)</div>
+            <div style="color:#f85149;font-size:11px;line-height:1.8">
+              daemon writes task file<br>
+              ↓<br>
+              tmux send-keys (may fail)<br>
+              ↓<br>
+              agent reads file... maybe<br>
+              ↓<br>
+              agent updates status... maybe<br>
+              ↓<br>
+              daemon polls file change (3s)<br>
+              ↓<br>
+              <span style="background:#3d1414;padding:2px 6px;border-radius:3px">race condition possible</span>
+            </div>
+          </div>
+          <div>
+            <div style="color:#e6edf3;margin-bottom:6px">New way (reliable)</div>
+            <div style="color:#3fb950;font-size:11px;line-height:1.8">
+              task goes pending → enters role queue<br>
+              ↓<br>
+              if role idle: pop task from queue<br>
+              ↓<br>
+              <span style="color:#ffa657">await sdk.query(taskPrompt, { session_id })</span><br>
+              ↓ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← agent runs here<br>
+              ResultMessage received<br>
+              ↓<br>
+              <span style="background:#0d3321;padding:2px 6px;border-radius:3px">role DEFINITELY idle now</span><br>
+              ↓<br>
+              dispatch next from queue
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;background:#161b22;padding:12px;border-radius:6px;border:1px solid #30363d">
+        <div style="color:#58a6ff;font-weight:bold;margin-bottom:8px">SDK Hooks Used</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11px">
+          <div style="background:#0d1117;padding:8px;border-radius:4px">
+            <div style="color:#ffa657">TeammateIdle</div>
+            <div style="color:#8b949e;margin-top:4px">Fires when agent goes idle — primary idle signal</div>
+          </div>
+          <div style="background:#0d1117;padding:8px;border-radius:4px">
+            <div style="color:#ffa657">TaskCompleted</div>
+            <div style="color:#8b949e;margin-top:4px">Fires on task completion — update task file</div>
+          </div>
+          <div style="background:#0d1117;padding:8px;border-radius:4px">
+            <div style="color:#ffa657">stop_reason</div>
+            <div style="color:#8b949e;margin-top:4px">end_turn / max_tokens / refusal — handle errors</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+  <div style="background:#0d3321;padding:16px;border-radius:8px;border-left:4px solid #3fb950">
+    <p class="label">What we keep</p>
+    <ul style="margin:8px 0 0;padding-left:16px;font-size:13px;line-height:1.8">
+      <li>tasks/*.md format (unchanged)</li>
+      <li>YAML frontmatter (unchanged)</li>
+      <li>Role CLAUDE.md files (minor updates)</li>
+      <li>company CLI interface</li>
+    </ul>
+  </div>
+  <div style="background:#3d1414;padding:16px;border-radius:8px;border-left:4px solid #f85149">
+    <p class="label">What we replace</p>
+    <ul style="margin:8px 0 0;padding-left:16px;font-size:13px;line-height:1.8">
+      <li>bash daemon → Node.js coordinator</li>
+      <li>tmux send-keys → Agent SDK query()</li>
+      <li>file polling → fs.watch events</li>
+      <li>guessed idle state → SDK completion signal</li>
+    </ul>
+  </div>
+</div>
