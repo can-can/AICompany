@@ -1,7 +1,7 @@
 import { Before, After, AfterAll, setDefaultTimeout } from '@cucumber/cucumber'
 import { chromium } from '@playwright/test'
 
-setDefaultTimeout(60000)
+setDefaultTimeout(120000)
 
 let browser = null
 

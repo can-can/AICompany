@@ -34,25 +34,31 @@ export function createSdkRunner(projectDir, sessionsPath) {
     let resultStatus = 'unknown'
     const messages = []
 
-    for await (const message of query({ prompt, options })) {
-      if (message.type === 'result') {
-        lastSessionId = message.session_id ?? lastSessionId
-        resultStatus = message.subtype ?? 'done'
-      } else if (message.type === 'assistant' && message.content) {
-        // Capture assistant text output
-        const text = Array.isArray(message.content)
-          ? message.content.filter(b => b.type === 'text').map(b => b.text).join('')
-          : String(message.content)
-        if (text) {
-          messages.push(text)
-          onMessage?.({ type: 'assistant', text, sessionId: lastSessionId })
+    for await (const event of query({ prompt, options })) {
+      if (event.type === 'result') {
+        lastSessionId = event.session_id ?? lastSessionId
+        resultStatus = event.subtype ?? 'done'
+      } else if (event.type === 'assistant') {
+        // SDK wraps content in event.message.content
+        const content = event.message?.content ?? event.content
+        if (content) {
+          const text = Array.isArray(content)
+            ? content.filter(b => b.type === 'text').map(b => b.text).join('')
+            : String(content)
+          if (text) {
+            messages.push(text)
+            onMessage?.({ type: 'assistant', text, sessionId: lastSessionId })
+          }
         }
-      } else if (message.type === 'user' && message.content) {
-        const text = Array.isArray(message.content)
-          ? message.content.filter(b => b.type === 'text').map(b => b.text).join('')
-          : String(message.content)
-        if (text) {
-          onMessage?.({ type: 'user', text, sessionId: lastSessionId })
+      } else if (event.type === 'user') {
+        const content = event.message?.content ?? event.content
+        if (content) {
+          const text = Array.isArray(content)
+            ? content.filter(b => b.type === 'text').map(b => b.text).join('')
+            : String(content)
+          if (text) {
+            onMessage?.({ type: 'user', text, sessionId: lastSessionId })
+          }
         }
       }
     }

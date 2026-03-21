@@ -3,13 +3,13 @@ import { expect } from '@playwright/test'
 
 When('I click on the {string} project card', async function (project) {
   await this.page.getByRole('link', { name: project }).first().click()
-  await this.page.waitForLoadState('networkidle')
+  await this.page.waitForLoadState('domcontentloaded')
 })
 
 When('I click on the {string} sidebar role', async function (role) {
   // Sidebar shows 3-letter abbreviations but has title attribute with full name
   await this.page.getByTitle(new RegExp(role, 'i')).click()
-  await this.page.waitForLoadState('networkidle')
+  await this.page.waitForLoadState('domcontentloaded')
 })
 
 Then('the project heading {string} is visible', async function (heading) {

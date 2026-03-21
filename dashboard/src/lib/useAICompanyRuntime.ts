@@ -82,12 +82,7 @@ export function useAICompanyRuntime(project: string, role: string) {
           id: 'sse-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
           text: data.text,
         }
-        setMessages(prev => {
-          // Deduplicate: skip if the last message has the same text and role
-          const last = prev[prev.length - 1]
-          if (last && last.text === msg.text && last.role === msg.role) return prev
-          return [...prev, msg]
-        })
+        setMessages(prev => [...prev, msg])
       }
     }
 
@@ -127,7 +122,9 @@ export function useAICompanyRuntime(project: string, role: string) {
     }
   }, [project, role, hasMore])
 
-  const isRunning = roleStatus?.state === 'working' || roleStatus?.state === 'ready'
+  // Don't pass isRunning=true to assistant-ui — it blocks Enter-to-submit
+  // in ComposerPrimitive.Input. We show working/ready state in our own status bar.
+  const isRunning = false
   const canSend = roleStatus != null
 
   const onNew = useCallback(async (message: AppendMessage) => {

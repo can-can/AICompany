@@ -20,6 +20,19 @@ Feature: Send messages to any role at any time
     And I type "hello" in the composer
     Then the Send button is enabled
 
+  Scenario: Send message to free role and receive agent response then persist after refresh
+    When I click on the "engineer" role
+    And I type a unique test message in the composer
+    And I click Send
+    Then the unique test message appears in the chat
+    When I wait for an agent response
+    Then an assistant message is visible
+    When I refresh the page
+    And I navigate to the "RabT" project
+    And I click on the "engineer" role
+    Then the unique test message appears in the chat
+    And an assistant message is visible
+
   Scenario: Click Send submits message
     When I click on the "engineer" role
     And I type "hello engineer" in the composer
@@ -33,19 +46,6 @@ Feature: Send messages to any role at any time
     And I press Enter in the composer
     Then the user message "hello via enter" appears in the chat
     And the composer input is empty
-
-  Scenario: Send message to free role and receive agent response then persist after refresh
-    When I click on the "engineer" role
-    And I type "what is 2+2" in the composer
-    And I click Send
-    Then the user message "what is 2+2" appears in the chat
-    When I wait for an agent response
-    Then an assistant message is visible
-    When I refresh the page
-    And I navigate to the "RabT" project
-    And I click on the "engineer" role
-    Then the user message "what is 2+2" appears in the chat
-    And an assistant message is visible
 
   @flaky
   Scenario: Status bar shows only for working and ready states

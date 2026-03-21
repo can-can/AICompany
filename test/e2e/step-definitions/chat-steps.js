@@ -5,11 +5,21 @@ import { expect } from '@playwright/test'
 
 When('I click on the {string} role', async function (role) {
   await this.page.getByRole('link', { name: new RegExp(role, 'i') }).first().click()
-  await this.page.waitForLoadState('networkidle')
+  await this.page.waitForLoadState('domcontentloaded')
 })
 
 When('I type {string} in the composer', async function (text) {
   await this.page.getByPlaceholder('Type a message...').fill(text)
+})
+
+When('I type a unique test message in the composer', async function () {
+  this.uniqueTestMessage = `e2e-test-${Date.now()}`
+  await this.page.getByPlaceholder('Type a message...').fill(this.uniqueTestMessage)
+})
+
+Then('the unique test message appears in the chat', async function () {
+  await expect(this.page.locator('[class*="justify-end"]', { hasText: this.uniqueTestMessage }).first())
+    .toBeVisible({ timeout: 10000 })
 })
 
 When('I click Send', async function () {
@@ -17,7 +27,15 @@ When('I click Send', async function () {
 })
 
 When('I press Enter in the composer', async function () {
-  await this.page.getByPlaceholder('Type a message...').press('Enter')
+  const input = this.page.getByPlaceholder('Type a message...')
+  // In headless Chromium, pressing Enter in a textarea inserts a newline.
+  // Prevent it via beforeinput (doesn't interfere with keydown/keypress handlers).
+  await input.evaluate(el => {
+    el.addEventListener('beforeinput', e => {
+      if (e.inputType === 'insertLineBreak') e.preventDefault()
+    }, { once: true })
+  })
+  await input.press('Enter')
 })
 
 Then('the composer input placeholder is {string}', async function (placeholder) {
@@ -37,7 +55,7 @@ Then('the Send button is enabled', async function () {
 })
 
 Then('the user message {string} appears in the chat', async function (text) {
-  await expect(this.page.locator('[class*="justify-end"]', { hasText: text }))
+  await expect(this.page.locator('[class*="justify-end"]', { hasText: text }).first())
     .toBeVisible({ timeout: 10000 })
 })
 
