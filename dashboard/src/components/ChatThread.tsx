@@ -7,6 +7,7 @@ import {
   useMessage,
 } from '@assistant-ui/react'
 import type { ProjectStatus, ConversationMessage, RoleStatus } from '../lib/api'
+import { stopAgent } from '../lib/api'
 import { useAICompanyData, useAICompanyRuntime } from '../lib/useAICompanyRuntime'
 import MarkdownText from './MarkdownText'
 import ToolCallUI from './ToolCallUI'
@@ -115,6 +116,18 @@ function ChatThreadInner({
   loadMore: () => Promise<void>
 }) {
   const { runtime } = useAICompanyRuntime(project, role, messages, roleStatus, projectStatus)
+  const [stopping, setStopping] = useState(false)
+
+  const handleStop = async () => {
+    setStopping(true)
+    try {
+      await stopAgent(project, role)
+    } catch {
+      // ignore — state will update via SSE/polling
+    } finally {
+      setStopping(false)
+    }
+  }
 
   return (
     <>
@@ -130,8 +143,17 @@ function ChatThreadInner({
         <Composer />
       </AssistantRuntimeProvider>
       {roleStatus && (roleStatus.state === 'working' || roleStatus.state === 'ready') && (
-        <div className="px-4 py-2 text-sm text-gray-500 text-center bg-gray-50 border-t border-gray-200">
-          {statusLabels[roleStatus.state] ?? roleStatus.state}
+        <div className="flex items-center justify-center gap-3 px-4 py-2 text-sm text-gray-500 bg-gray-50 border-t border-gray-200">
+          <span>{statusLabels[roleStatus.state] ?? roleStatus.state}</span>
+          {roleStatus.state === 'working' && (
+            <button
+              onClick={handleStop}
+              disabled={stopping}
+              className="px-3 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {stopping ? 'Stopping...' : 'Stop'}
+            </button>
+          )}
         </div>
       )}
     </>

@@ -73,6 +73,22 @@ export function createWebServer(projectStore, { port = 4000 } = {}) {
     }
   })
 
+  app.post('/api/stop', (req, res) => {
+    const project = requireProject(req, res)
+    if (!project) return
+    const { role } = req.body ?? {}
+    if (!role) {
+      res.status(400).json({ error: 'role is required' })
+      return
+    }
+    try {
+      const stopped = project.roleManager.stopAgent(role)
+      res.json({ ok: true, stopped })
+    } catch (err) {
+      res.status(400).json({ error: err.message })
+    }
+  })
+
   app.post('/api/next-id', (req, res) => {
     const project = requireProject(req, res)
     if (!project) return

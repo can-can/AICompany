@@ -67,6 +67,17 @@ export async function sendMessage(project: string, role: string, message: string
   return data
 }
 
+export async function stopAgent(project: string, role: string): Promise<{ ok: boolean; stopped: boolean }> {
+  const res = await fetch(`/api/stop?project=${encodeURIComponent(project)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to stop agent')
+  return data
+}
+
 export type ContentPart =
   | { type: 'text'; text: string }
   | { type: 'tool_use'; id: string; name: string; input: unknown }

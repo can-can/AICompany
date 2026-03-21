@@ -28,6 +28,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
       _idleResolvers: [],
       lastMessages: [],   // last assistant messages from SDK (shown on dashboard)
       inputQueue: [],      // human messages queued while agent is busy
+      abortController: null, // AbortController for current SDK call
     }
   }
 
@@ -64,10 +65,12 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
           logger.add('info', role, `delivering human input to task #${runner.currentTask.id}`)
           runner.state = 'working'
           runner.sdkInFlight = true
+          runner.abortController = new AbortController()
           try {
             const result = await withTimeout(sdkRunner(fresh, role, runner.sessionId, {
               prompt: humanMsg,
-              onMessage: (msg) => emitter.emit('message', { role, ...msg })
+              onMessage: (msg) => emitter.emit('message', { role, ...msg }),
+              abortController: runner.abortController,
             }), SDK_TIMEOUT_MS)
             setSessionId(role, result?.sessionId)
             if (result?.messages?.length) {
@@ -77,6 +80,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
             logger.add('error', role, `sdk error on task #${fresh.id}: ${err.message}`)
           } finally {
             runner.sdkInFlight = false
+            runner.abortController = null
             runner.state = 'ready'
             runner.currentTask = readTaskFile(fresh.filepath) ?? { ...fresh, status: 'done' }
             scheduleDispatch(role)
@@ -97,11 +101,13 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
         runner.state = 'working'
         runner.currentTask = null
         runner.sdkInFlight = true
+        runner.abortController = new AbortController()
         logger.add('info', role, 'processing ad-hoc human message')
         try {
           const result = await withTimeout(sdkRunner(null, role, runner.sessionId, {
             prompt: humanMsg,
-            onMessage: (msg) => emitter.emit('message', { role, ...msg })
+            onMessage: (msg) => emitter.emit('message', { role, ...msg }),
+            abortController: runner.abortController,
           }), SDK_TIMEOUT_MS)
           setSessionId(role, result?.sessionId)
           if (result?.messages?.length) runner.lastMessages = result.messages
@@ -109,6 +115,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
           logger.add('error', role, `sdk error on ad-hoc message: ${err.message}`)
         } finally {
           runner.sdkInFlight = false
+          runner.abortController = null
           runner.state = 'ready'
           runner.currentTask = null
           scheduleDispatch(role)
@@ -123,12 +130,14 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
 
     runner.state = 'working'
     runner.sdkInFlight = true
+    runner.abortController = new AbortController()
     runner.currentTask = next
     logger.add('info', role, `dispatching task #${next.id}: ${next.title}`)
 
     try {
       const result = await withTimeout(sdkRunner(next, role, runner.sessionId, {
-        onMessage: (msg) => emitter.emit('message', { role, ...msg })
+        onMessage: (msg) => emitter.emit('message', { role, ...msg }),
+        abortController: runner.abortController,
       }), SDK_TIMEOUT_MS)
       setSessionId(role, result?.sessionId)
       if (result?.messages?.length) {
@@ -138,6 +147,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
       logger.add('error', role, `sdk error on task #${next.id}: ${err.message}`)
     } finally {
       runner.sdkInFlight = false
+      runner.abortController = null
       runner.state = 'ready'                 // transient ready state visible to dashboard
       runner.currentTask = readTaskFile(next.filepath) ?? { ...next, status: 'done' }
       scheduleDispatch(role)
@@ -282,5 +292,15 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
     await Promise.all(promises)
   }
 
-  return { enqueue, getState, getStatus, scheduleDispatch, sendInput, notifyTaskDone, loadSessions, getSessions, initializeSessions, restoreInProgressTasks, waitIdle, emitter }
+  function stopAgent(role) {
+    const runner = getRunner(role)
+    if (!runner.sdkInFlight) return false
+    if (runner.abortController) {
+      runner.abortController.abort()
+      logger.add('info', role, 'agent stopped by user')
+    }
+    return true
+  }
+
+  return { enqueue, getState, getStatus, scheduleDispatch, sendInput, notifyTaskDone, stopAgent, loadSessions, getSessions, initializeSessions, restoreInProgressTasks, waitIdle, emitter }
 }
