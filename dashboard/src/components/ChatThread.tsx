@@ -3,7 +3,6 @@ import {
   AssistantRuntimeProvider,
   ThreadPrimitive,
   MessagePrimitive,
-  MessagePartPrimitive,
   ComposerPrimitive,
   useMessage,
 } from '@assistant-ui/react'
@@ -19,16 +18,12 @@ const statusLabels: Record<string, string> = {
   waiting_human: '',
 }
 
-function UserTextPart() {
-  return <MessagePartPrimitive.Text component="p" className="whitespace-pre-wrap" />
-}
-
 function UserMessage() {
   return (
     <MessagePrimitive.Root className="flex justify-end px-4 py-2">
-      <div className="max-w-[80%] bg-blue-600 text-white rounded-2xl rounded-br-md px-4 py-2 text-sm">
+      <div className="max-w-[80%] bg-blue-600 text-white rounded-2xl rounded-br-md px-4 py-2 text-sm prose-invert">
         <MessagePrimitive.Content
-          components={{ Text: UserTextPart }}
+          components={{ Text: MarkdownText }}
         />
       </div>
     </MessagePrimitive.Root>

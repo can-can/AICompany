@@ -60,7 +60,7 @@ export function createSdkRunner(projectDir, sessionsPath) {
         const rawContent = event.message?.content ?? event.content
         if (rawContent) {
           const parts = extractContentParts(rawContent)
-          const text = parts.filter(p => p.type === 'text').map(p => p.text).join('')
+          const text = parts.filter(p => p.type === 'text').map(p => p.text).join('\n\n')
           if (text || parts.some(p => p.type === 'tool_use')) {
             messages.push(text)
             onMessage?.({ type: 'assistant', text, content: parts, sessionId: lastSessionId })
@@ -69,11 +69,10 @@ export function createSdkRunner(projectDir, sessionsPath) {
       } else if (event.type === 'user') {
         const rawContent = event.message?.content ?? event.content
         if (rawContent) {
-          const text = Array.isArray(rawContent)
-            ? rawContent.filter(b => b.type === 'text').map(b => b.text).join('')
-            : String(rawContent)
+          const parts = extractContentParts(rawContent)
+          const text = parts.filter(p => p.type === 'text').map(p => p.text).join('\n\n')
           if (text) {
-            onMessage?.({ type: 'user', text, sessionId: lastSessionId })
+            onMessage?.({ type: 'user', text, content: parts, sessionId: lastSessionId })
           }
         }
       }
