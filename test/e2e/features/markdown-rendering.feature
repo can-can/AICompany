@@ -7,9 +7,11 @@ Feature: Markdown rendering in chat messages
     And I navigate to the "test-company" project
     And I click on the "pm" role
 
+  @requires-history
   Scenario: Historical assistant messages render markdown bold as HTML
     Then an assistant message contains a "strong" element
 
+  @requires-history
   Scenario: Historical assistant messages render markdown tables as HTML
     Then an assistant message contains a "table" element
 
