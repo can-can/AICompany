@@ -1,6 +1,18 @@
 import { EventEmitter } from 'node:events'
 import { priorityOrder } from './task-parser.js'
 
+const SDK_TIMEOUT_MS = parseInt(process.env.AI_COMPANY_SDK_TIMEOUT ?? '120000', 10)
+
+function withTimeout(promise, ms) {
+  let timer
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`SDK call timed out after ${ms}ms`)), ms)
+    })
+  ]).finally(() => clearTimeout(timer))
+}
+
 export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
   const runners = {}
   const emitter = new EventEmitter()
@@ -53,10 +65,10 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
           runner.state = 'working'
           runner.sdkInFlight = true
           try {
-            const result = await sdkRunner(fresh, role, runner.sessionId, {
+            const result = await withTimeout(sdkRunner(fresh, role, runner.sessionId, {
               prompt: humanMsg,
               onMessage: (msg) => emitter.emit('message', { role, ...msg })
-            })
+            }), SDK_TIMEOUT_MS)
             setSessionId(role, result?.sessionId)
             if (result?.messages?.length) {
               runner.lastMessages = result.messages
@@ -87,10 +99,10 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
         runner.sdkInFlight = true
         logger.add('info', role, 'processing ad-hoc human message')
         try {
-          const result = await sdkRunner(null, role, runner.sessionId, {
+          const result = await withTimeout(sdkRunner(null, role, runner.sessionId, {
             prompt: humanMsg,
             onMessage: (msg) => emitter.emit('message', { role, ...msg })
-          })
+          }), SDK_TIMEOUT_MS)
           setSessionId(role, result?.sessionId)
           if (result?.messages?.length) runner.lastMessages = result.messages
         } catch (err) {
@@ -115,9 +127,9 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
     logger.add('info', role, `dispatching task #${next.id}: ${next.title}`)
 
     try {
-      const result = await sdkRunner(next, role, runner.sessionId, {
+      const result = await withTimeout(sdkRunner(next, role, runner.sessionId, {
         onMessage: (msg) => emitter.emit('message', { role, ...msg })
-      })
+      }), SDK_TIMEOUT_MS)
       setSessionId(role, result?.sessionId)
       if (result?.messages?.length) {
         runner.lastMessages = result.messages

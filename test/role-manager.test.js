@@ -177,6 +177,36 @@ test('multiple ad-hoc messages processed sequentially', async () => {
   assert.equal(mgr.getState('engineer'), 'free')
 })
 
+test('SDK call timeout unblocks dispatch chain for next message', async () => {
+  let callCount = 0
+  const sdk = async (task, role, sessionId, opts) => {
+    callCount++
+    if (callCount === 1) {
+      // Simulate a hanging SDK call — will be killed by timeout
+      await new Promise(() => {})
+    }
+    return { sessionId: 'sess', resultStatus: 'done', messages: ['reply'] }
+  }
+  // Use a very short timeout via env var
+  const origTimeout = process.env.AI_COMPANY_SDK_TIMEOUT
+  process.env.AI_COMPANY_SDK_TIMEOUT = '50'
+
+  // Re-import to pick up the new timeout value
+  const { createRoleManager: createRM } = await import('../bin/lib/role-manager.js?t=' + Date.now())
+  const mgr = createRM(['engineer'], sdk, makeMockReadTask('done'), createLogger())
+  mgr.loadSessions({ engineer: 'sess' })
+
+  mgr.sendInput('engineer', 'will timeout')
+  mgr.sendInput('engineer', 'should succeed')
+  await mgr.waitIdle('engineer')
+
+  assert.equal(callCount, 2)
+  assert.equal(mgr.getState('engineer'), 'free')
+
+  if (origTimeout === undefined) delete process.env.AI_COMPANY_SDK_TIMEOUT
+  else process.env.AI_COMPANY_SDK_TIMEOUT = origTimeout
+})
+
 test('restoreInProgressTasks sets waiting_human for in_progress tasks', () => {
   const mgr = createRoleManager(['engineer', 'pm'], makeMockSdk(), makeMockReadTask(), createLogger())
   const tasks = [
