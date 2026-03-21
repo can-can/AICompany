@@ -22,8 +22,8 @@ Then('the roles list is visible', async function () {
 })
 
 Then('the role name {string} is visible', async function (name) {
-  // Role name is a <span>, not a heading
-  await expect(this.page.getByText(name, { exact: true })).toBeVisible()
+  // Role name is a <span> with CSS uppercase — DOM text is lowercase
+  await expect(this.page.getByText(new RegExp(`^${name}$`, 'i'))).toBeVisible()
 })
 
 Then('the projects list is visible', async function () {

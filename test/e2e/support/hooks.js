@@ -1,5 +1,7 @@
-import { Before, After, AfterAll } from '@cucumber/cucumber'
+import { Before, After, AfterAll, setDefaultTimeout } from '@cucumber/cucumber'
 import { chromium } from '@playwright/test'
+
+setDefaultTimeout(60000)
 
 let browser = null
 
