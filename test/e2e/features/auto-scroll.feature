@@ -22,3 +22,12 @@ Feature: Auto-scroll to bottom for new messages
     And I click Send
     When I wait for an agent response
     Then the chat is scrolled to the bottom
+
+  @flaky
+  Scenario: Scrolled-up view is not interrupted by new messages
+    When I click on the "engineer" role
+    And I scroll to the top of the chat
+    And I type "do not scroll me" in the composer
+    And I click Send
+    Then the user message "do not scroll me" appears in the chat
+    And the chat is not scrolled to the bottom
