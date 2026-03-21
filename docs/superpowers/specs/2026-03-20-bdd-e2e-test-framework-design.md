@@ -234,6 +234,11 @@ When('I wait for an agent response', async function () {
   await expect(this.page.locator('[class*="justify-start"]'))
     .toHaveCount(before + 1, { timeout: 60000 })
 })
+
+// Shared step used by both navigation and chat features
+Then('the composer input is visible', async function () {
+  await expect(this.page.getByPlaceholder('Type a message...')).toBeVisible()
+})
 ```
 
 ### chat-steps.js
@@ -241,6 +246,8 @@ When('I wait for an agent response', async function () {
 ```js
 import { When, Then } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
+
+// Note: 'the composer input is visible' step is in common-steps.js (shared with navigation)
 
 When('I click on the {string} role', async function (role) {
   await this.page.getByRole('link', { name: new RegExp(role, 'i') }).first().click()
@@ -257,10 +264,6 @@ When('I click Send', async function () {
 
 When('I press Enter in the composer', async function () {
   await this.page.getByPlaceholder('Type a message...').press('Enter')
-})
-
-Then('the composer input is visible', async function () {
-  await expect(this.page.getByPlaceholder('Type a message...')).toBeVisible()
 })
 
 Then('the composer input placeholder is {string}', async function (placeholder) {
