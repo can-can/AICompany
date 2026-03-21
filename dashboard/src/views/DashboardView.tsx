@@ -57,7 +57,7 @@ export default function DashboardView() {
 
             <section>
               <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Tasks</h2>
-              <TaskTable tasks={tasks} />
+              <TaskTable tasks={tasks} project={project!} />
             </section>
 
             <section>

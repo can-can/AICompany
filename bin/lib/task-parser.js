@@ -61,6 +61,41 @@ export function buildTaskList(tasksDir) {
   return tasks
 }
 
+export function readTaskFileWithBody(filepath) {
+  try {
+    const content = readFileSync(filepath, 'utf8')
+    const fields = parseFrontmatter(content)
+    if (!fields || !fields.id) return null
+    const bodyMatch = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/)
+    const body = bodyMatch ? bodyMatch[1].trim() : ''
+    return {
+      id: fields.id,
+      parent: fields.parent ?? null,
+      title: fields.title ?? '',
+      status: fields.status ?? 'pending',
+      from: fields.from ?? null,
+      to: fields.to ?? null,
+      owner: fields.owner ?? null,
+      priority: fields.priority ?? 'medium',
+      created: fields.created ?? '',
+      updated: fields.updated ?? '',
+      body,
+      filepath,
+    }
+  } catch {
+    return null
+  }
+}
+
+export function updateTaskStatus(filepath, newStatus) {
+  const content = readFileSync(filepath, 'utf8')
+  const today = new Date().toISOString().slice(0, 10)
+  const updated = content
+    .replace(/^(status:\s*).+$/m, `$1${newStatus}`)
+    .replace(/^(updated:\s*).+$/m, `$1${today}`)
+  writeFileSync(filepath, updated)
+}
+
 export function getNextId(tasksDir) {
   const counterFile = join(tasksDir, '.next-id')
   const lockFile = join(tasksDir, '.next-id.lock')

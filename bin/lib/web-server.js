@@ -1,7 +1,7 @@
 import express from 'express'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { getNextId } from './task-parser.js'
+import { getNextId, buildTaskList, readTaskFileWithBody, updateTaskStatus } from './task-parser.js'
 import { mkdirSync } from 'node:fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -86,6 +86,57 @@ export function createWebServer(projectStore, { port = 4000 } = {}) {
       res.json({ ok: true, stopped })
     } catch (err) {
       res.status(400).json({ error: err.message })
+    }
+  })
+
+  app.get('/api/task', (req, res) => {
+    const project = requireProject(req, res)
+    if (!project) return
+    const { id } = req.query
+    if (!id) {
+      res.status(400).json({ error: 'id query parameter required' })
+      return
+    }
+    const tasksDir = join(project.path, 'tasks')
+    const tasks = buildTaskList(tasksDir)
+    const task = tasks.find(t => t.id === id)
+    if (!task) {
+      res.status(404).json({ error: `task '${id}' not found` })
+      return
+    }
+    const detail = readTaskFileWithBody(task.filepath)
+    if (!detail) {
+      res.status(404).json({ error: `task '${id}' not found` })
+      return
+    }
+    res.json(detail)
+  })
+
+  app.patch('/api/task/status', (req, res) => {
+    const project = requireProject(req, res)
+    if (!project) return
+    const { id, status } = req.body ?? {}
+    if (!id || !status) {
+      res.status(400).json({ error: 'id and status are required' })
+      return
+    }
+    const validStatuses = ['pending', 'in_progress', 'done', 'rejected']
+    if (!validStatuses.includes(status)) {
+      res.status(400).json({ error: `invalid status, must be one of: ${validStatuses.join(', ')}` })
+      return
+    }
+    const tasksDir = join(project.path, 'tasks')
+    const tasks = buildTaskList(tasksDir)
+    const task = tasks.find(t => t.id === id)
+    if (!task) {
+      res.status(404).json({ error: `task '${id}' not found` })
+      return
+    }
+    try {
+      updateTaskStatus(task.filepath, status)
+      res.json({ ok: true })
+    } catch (err) {
+      res.status(500).json({ error: err.message })
     }
   })
 

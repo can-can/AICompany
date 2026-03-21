@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import type { TaskItem } from '../lib/api'
 
 const badgeColor: Record<string, string> = {
@@ -7,7 +8,9 @@ const badgeColor: Record<string, string> = {
   rejected: 'bg-red-50 text-red-700',
 }
 
-export default function TaskTable({ tasks }: { tasks: TaskItem[] }) {
+export default function TaskTable({ tasks, project }: { tasks: TaskItem[]; project: string }) {
+  const navigate = useNavigate()
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -24,9 +27,13 @@ export default function TaskTable({ tasks }: { tasks: TaskItem[] }) {
         </thead>
         <tbody>
           {tasks.map((t) => (
-            <tr key={t.id} className="border-b border-gray-100">
+            <tr
+              key={t.id}
+              onClick={() => navigate(`/${encodeURIComponent(project)}/task/${t.id}`)}
+              className="border-b border-gray-100 cursor-pointer hover:bg-gray-50"
+            >
               <td className="py-2 px-3 text-gray-400">{t.id}</td>
-              <td className="py-2 px-3 text-gray-900">{t.title}</td>
+              <td className="py-2 px-3 text-blue-600">{t.title}</td>
               <td className="py-2 px-3 text-gray-400">{t.from ?? '-'}</td>
               <td className="py-2 px-3 text-gray-900">{t.to ?? '-'}</td>
               <td className="py-2 px-3 text-gray-400">{t.owner ?? '-'}</td>

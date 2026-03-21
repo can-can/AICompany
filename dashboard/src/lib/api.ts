@@ -26,6 +26,13 @@ export type TaskItem = {
   priority: string
 }
 
+export type TaskDetail = TaskItem & {
+  parent: string | null
+  body: string
+  created: string
+  updated: string
+}
+
 export type LogEntry = {
   timestamp: string
   level: string
@@ -75,6 +82,23 @@ export async function stopAgent(project: string, role: string): Promise<{ ok: bo
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Failed to stop agent')
+  return data
+}
+
+export async function fetchTask(project: string, id: string): Promise<TaskDetail | null> {
+  const res = await fetch(`/api/task?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
+  if (!res.ok) return null
+  return res.json()
+}
+
+export async function updateTaskStatus(project: string, id: string, status: string): Promise<{ ok: boolean }> {
+  const res = await fetch(`/api/task/status?project=${encodeURIComponent(project)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, status }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to update status')
   return data
 }
 
