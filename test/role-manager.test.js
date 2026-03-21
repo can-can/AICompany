@@ -111,7 +111,7 @@ test('sendInput delivers message to waiting_human agent and resumes', async () =
   assert.equal(mgr.getState('engineer'), 'free')
 })
 
-test('sendInput queues message when agent is busy', async () => {
+test('sendInput queues message when agent is busy and processes it after task completes', async () => {
   let resolve
   let callCount = 0
   const sdk = async (task, role, sessionId, opts) => {
@@ -132,7 +132,48 @@ test('sendInput queues message when agent is busy', async () => {
 
   resolve() // let the first call finish
   await mgr.waitIdle('engineer')
-  // Input was queued but agent finished task (done status) — queue is drained on next dispatch
+  // Input was queued and processed as ad-hoc message after the task completed
+  assert.equal(callCount, 2)
+  assert.equal(mgr.getState('engineer'), 'free')
+})
+
+test('sendInput when role is free processes ad-hoc message', async () => {
+  let sdkCalls = []
+  const sdk = async (task, role, sessionId, opts) => {
+    sdkCalls.push({ task, role, sessionId, prompt: opts?.prompt })
+    return { sessionId: 'sess-engineer', resultStatus: 'done', messages: ['ad-hoc reply'] }
+  }
+  const mgr = createRoleManager(['engineer'], sdk, makeMockReadTask('done'), createLogger())
+  // Pre-load session so we can verify it's passed through
+  mgr.loadSessions({ engineer: 'existing-sess' })
+  assert.equal(mgr.getState('engineer'), 'free')
+
+  mgr.sendInput('engineer', 'hello engineer')
+  await mgr.waitIdle('engineer')
+
+  assert.equal(sdkCalls.length, 1)
+  assert.equal(sdkCalls[0].task, null)
+  assert.equal(sdkCalls[0].prompt, 'hello engineer')
+  assert.equal(sdkCalls[0].sessionId, 'existing-sess')
+  assert.equal(mgr.getState('engineer'), 'free')
+})
+
+test('multiple ad-hoc messages processed sequentially', async () => {
+  let sdkCalls = []
+  const sdk = async (task, role, sessionId, opts) => {
+    sdkCalls.push({ prompt: opts?.prompt })
+    return { sessionId: 'sess', resultStatus: 'done', messages: ['reply'] }
+  }
+  const mgr = createRoleManager(['engineer'], sdk, makeMockReadTask('done'), createLogger())
+  mgr.loadSessions({ engineer: 'sess' })
+
+  mgr.sendInput('engineer', 'first message')
+  mgr.sendInput('engineer', 'second message')
+  await mgr.waitIdle('engineer')
+
+  assert.equal(sdkCalls.length, 2)
+  assert.equal(sdkCalls[0].prompt, 'first message')
+  assert.equal(sdkCalls[1].prompt, 'second message')
   assert.equal(mgr.getState('engineer'), 'free')
 })
 

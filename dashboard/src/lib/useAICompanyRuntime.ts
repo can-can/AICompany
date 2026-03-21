@@ -128,15 +128,15 @@ export function useAICompanyRuntime(project: string, role: string) {
   }, [project, role, hasMore])
 
   const isRunning = roleStatus?.state === 'working' || roleStatus?.state === 'ready'
-  const canSend = roleStatus?.state === 'waiting_human'
+  const canSend = roleStatus != null
 
   const onNew = useCallback(async (message: AppendMessage) => {
-    if (!canSend) return
+    if (!roleStatus) return
     const textPart = message.content.find((c) => c.type === 'text')
     if (!textPart || textPart.type !== 'text') return
     // Human message will arrive via SSE (emitted by sendInput on the server)
     await sendMessage(project, role, textPart.text)
-  }, [project, role, canSend])
+  }, [project, role, roleStatus])
 
   const runtime = useExternalStoreRuntime({
     messages,

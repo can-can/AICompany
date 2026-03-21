@@ -45,17 +45,15 @@ function TextPart() {
   return <MessagePartPrimitive.Text component="p" className="whitespace-pre-wrap" />
 }
 
-function Composer({ canSend }: { canSend: boolean }) {
+function Composer() {
   return (
     <ComposerPrimitive.Root className="flex items-end gap-2 border-t border-gray-200 bg-white px-4 py-3">
       <ComposerPrimitive.Input
-        placeholder={canSend ? 'Type a message...' : 'Waiting for agent...'}
-        disabled={!canSend}
-        className="flex-1 resize-none rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+        placeholder="Type a message..."
+        className="flex-1 resize-none rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
         autoFocus
       />
       <ComposerPrimitive.Send
-        disabled={!canSend}
         className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         Send
@@ -95,7 +93,7 @@ function LoadMoreButton({ hasMore, onLoadMore }: { hasMore: boolean; onLoadMore:
 }
 
 export default function ChatThread({ project, role, onStatusChange }: { project: string; role: string; onStatusChange?: (status: ProjectStatus | null) => void }) {
-  const { runtime, roleStatus, projectStatus, canSend, hasMore, loadMore } = useAICompanyRuntime(project, role)
+  const { runtime, roleStatus, projectStatus, hasMore, loadMore } = useAICompanyRuntime(project, role)
 
   useEffect(() => {
     onStatusChange?.(projectStatus)
@@ -112,9 +110,9 @@ export default function ChatThread({ project, role, onStatusChange }: { project:
             </ThreadPrimitive.Messages>
           </ThreadPrimitive.Viewport>
         </div>
-        <Composer canSend={canSend} />
+        <Composer />
       </AssistantRuntimeProvider>
-      {!canSend && roleStatus && (
+      {roleStatus && (roleStatus.state === 'working' || roleStatus.state === 'ready') && (
         <div className="px-4 py-2 text-sm text-gray-500 text-center bg-gray-50 border-t border-gray-200">
           {statusLabels[roleStatus.state] ?? roleStatus.state}
         </div>

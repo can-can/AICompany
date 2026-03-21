@@ -80,6 +80,29 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
 
     const next = runner.queue.shift()
     if (!next) {
+      const humanMsg = runner.inputQueue.shift()
+      if (humanMsg) {
+        runner.state = 'working'
+        runner.currentTask = null
+        runner.sdkInFlight = true
+        logger.add('info', role, 'processing ad-hoc human message')
+        try {
+          const result = await sdkRunner(null, role, runner.sessionId, {
+            prompt: humanMsg,
+            onMessage: (msg) => emitter.emit('message', { role, ...msg })
+          })
+          setSessionId(role, result?.sessionId)
+          if (result?.messages?.length) runner.lastMessages = result.messages
+        } catch (err) {
+          logger.add('error', role, `sdk error on ad-hoc message: ${err.message}`)
+        } finally {
+          runner.sdkInFlight = false
+          runner.state = 'ready'
+          runner.currentTask = null
+          scheduleDispatch(role)
+        }
+        return
+      }
       runner.state = 'free'
       runner.currentTask = null
       notifyIdle(role)
@@ -136,7 +159,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
     const runner = getRunner(role)
     runner.inputQueue.push(message)
     emitter.emit('message', { role, type: 'user', text: message })
-    if (runner.state === 'waiting_human') {
+    if (runner.state === 'waiting_human' || runner.state === 'free') {
       // Kick dispatch to pick up the queued input
       scheduleDispatch(role)
     }
