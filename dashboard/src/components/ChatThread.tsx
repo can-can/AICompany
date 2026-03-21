@@ -11,6 +11,7 @@ import { stopAgent } from '../lib/api'
 import { useAICompanyData, useAICompanyRuntime } from '../lib/useAICompanyRuntime'
 import MarkdownText from './MarkdownText'
 import ToolCallUI from './ToolCallUI'
+import CollapsibleMessage from './CollapsibleMessage'
 
 const statusLabels: Record<string, string> = {
   working: 'Agent is working...',
@@ -23,9 +24,11 @@ function UserMessage() {
   return (
     <MessagePrimitive.Root className="flex justify-end px-4 py-2">
       <div className="max-w-[80%] bg-blue-600 text-white rounded-2xl rounded-br-md px-4 py-2 text-sm prose-invert">
-        <MessagePrimitive.Content
-          components={{ Text: MarkdownText }}
-        />
+        <CollapsibleMessage fadeColor="from-blue-600">
+          <MessagePrimitive.Content
+            components={{ Text: MarkdownText }}
+          />
+        </CollapsibleMessage>
       </div>
     </MessagePrimitive.Root>
   )
@@ -35,12 +38,14 @@ function AssistantMessage() {
   return (
     <MessagePrimitive.Root className="flex justify-start px-4 py-2">
       <div className="max-w-[80%] bg-gray-100 text-gray-900 rounded-2xl rounded-bl-md px-4 py-2 text-sm">
-        <MessagePrimitive.Content
-          components={{
-            Text: MarkdownText,
-            tools: { Fallback: ToolCallUI },
-          }}
-        />
+        <CollapsibleMessage fadeColor="from-gray-100">
+          <MessagePrimitive.Content
+            components={{
+              Text: MarkdownText,
+              tools: { Fallback: ToolCallUI },
+            }}
+          />
+        </CollapsibleMessage>
       </div>
     </MessagePrimitive.Root>
   )

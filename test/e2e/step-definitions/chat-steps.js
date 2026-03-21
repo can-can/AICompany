@@ -124,6 +124,44 @@ Then('the agent returns to idle', async function () {
   await expect(this.page.getByText('Agent is finishing up...')).not.toBeVisible({ timeout: 10000 })
 })
 
+Then('no {string} button is visible', async function (text) {
+  // Check only the last user message bubble, not the whole page
+  const lastUserMsg = this.page.locator('[class*="justify-end"]').last()
+  await expect(lastUserMsg.getByRole('button', { name: text })).not.toBeVisible()
+})
+
+When('I type a very long message in the composer', async function () {
+  const lines = Array.from({ length: 30 }, (_, i) => `Line ${i + 1}: This is a long test message to verify collapsible behavior in the chat UI.`)
+  await this.page.getByPlaceholder('Type a message...').fill(lines.join('\n'))
+})
+
+Then('a {string} button is visible in a chat message', async function (text) {
+  await expect(this.page.getByRole('button', { name: text }).first()).toBeVisible({ timeout: 10000 })
+})
+
+When('I click the {string} button in the message', async function (text) {
+  await this.page.getByRole('button', { name: text }).first().click()
+})
+
+Then('the long message is visually collapsed', async function () {
+  const btn = this.page.getByRole('button', { name: 'Show more' }).first()
+  const height = await btn.evaluate(b => {
+    const contentDiv = b.previousElementSibling
+    return contentDiv?.clientHeight ?? 0
+  })
+  expect(height).toBeLessThanOrEqual(300)
+})
+
+Then('the long message is visually expanded', async function () {
+  const btn = this.page.getByRole('button', { name: 'Show less' }).first()
+  await expect(btn).toBeVisible()
+  const height = await btn.evaluate(b => {
+    const contentDiv = b.previousElementSibling
+    return contentDiv?.clientHeight ?? 0
+  })
+  expect(height).toBeGreaterThan(300)
+})
+
 Then('no tool call shows {string} status', async function (status) {
   await expect(this.page.getByPlaceholder('Type a message...')).toBeVisible({ timeout: 10000 })
   await expect(this.page.locator('[class*="justify-start"]').first()).toBeVisible({ timeout: 10000 })
