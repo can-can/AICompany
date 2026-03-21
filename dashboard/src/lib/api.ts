@@ -67,10 +67,16 @@ export async function sendMessage(project: string, role: string, message: string
   return data
 }
 
+export type ContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'tool_use'; id: string; name: string; input: unknown }
+  | { type: 'tool_result'; tool_use_id: string; content: unknown }
+
 export type ConversationMessage = {
   role: 'user' | 'assistant'
   id: string
   text: string
+  content?: ContentPart[]
 }
 
 export type ConversationPage = {

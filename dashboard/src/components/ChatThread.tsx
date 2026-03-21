@@ -9,6 +9,8 @@ import {
 } from '@assistant-ui/react'
 import type { ProjectStatus } from '../lib/api'
 import { useAICompanyRuntime } from '../lib/useAICompanyRuntime'
+import MarkdownText from './MarkdownText'
+import ToolCallUI from './ToolCallUI'
 
 const statusLabels: Record<string, string> = {
   working: 'Agent is working...',
@@ -17,12 +19,16 @@ const statusLabels: Record<string, string> = {
   waiting_human: '',
 }
 
+function UserTextPart() {
+  return <MessagePartPrimitive.Text component="p" className="whitespace-pre-wrap" />
+}
+
 function UserMessage() {
   return (
     <MessagePrimitive.Root className="flex justify-end px-4 py-2">
       <div className="max-w-[80%] bg-blue-600 text-white rounded-2xl rounded-br-md px-4 py-2 text-sm">
         <MessagePrimitive.Content
-          components={{ Text: TextPart }}
+          components={{ Text: UserTextPart }}
         />
       </div>
     </MessagePrimitive.Root>
@@ -34,15 +40,14 @@ function AssistantMessage() {
     <MessagePrimitive.Root className="flex justify-start px-4 py-2">
       <div className="max-w-[80%] bg-gray-100 text-gray-900 rounded-2xl rounded-bl-md px-4 py-2 text-sm">
         <MessagePrimitive.Content
-          components={{ Text: TextPart }}
+          components={{
+            Text: MarkdownText,
+            tools: { Fallback: ToolCallUI },
+          }}
         />
       </div>
     </MessagePrimitive.Root>
   )
-}
-
-function TextPart() {
-  return <MessagePartPrimitive.Text component="p" className="whitespace-pre-wrap" />
 }
 
 function Composer() {

@@ -9,15 +9,52 @@ import {
   fetchConversation,
   sendMessage,
   type ConversationMessage,
+  type ContentPart,
   type RoleStatus,
   type ProjectStatus,
 } from './api'
 
+type JSONValue = string | number | boolean | null | { [key: string]: JSONValue } | JSONValue[]
+
+type MappedPart =
+  | { type: 'text'; text: string }
+  | { type: 'tool-call'; toolCallId: string; toolName: string; args: { readonly [key: string]: JSONValue }; result?: unknown }
+
+function mapContentParts(parts: ContentPart[]): MappedPart[] {
+  const mapped: MappedPart[] = []
+  // Build a lookup of tool_use id -> tool_result for pairing
+  const resultsByToolId = new Map<string, unknown>()
+  for (const p of parts) {
+    if (p.type === 'tool_result') {
+      resultsByToolId.set(p.tool_use_id, p.content)
+    }
+  }
+  for (const part of parts) {
+    if (part.type === 'text') {
+      mapped.push({ type: 'text' as const, text: part.text })
+    } else if (part.type === 'tool_use') {
+      const result = resultsByToolId.get(part.id)
+      mapped.push({
+        type: 'tool-call' as const,
+        toolCallId: part.id,
+        toolName: part.name,
+        args: (part.input ?? {}) as { readonly [key: string]: JSONValue },
+        result,
+      })
+    }
+  }
+  return mapped
+}
+
 export function convertMessage(entry: ConversationMessage, _index: number): ThreadMessageLike {
+  const content = entry.content && entry.content.length > 0
+    ? mapContentParts(entry.content)
+    : [{ type: 'text' as const, text: entry.text }]
+
   return {
     id: entry.id,
     role: entry.role === 'user' ? 'user' : 'assistant',
-    content: [{ type: 'text' as const, text: entry.text }],
+    content,
   }
 }
 

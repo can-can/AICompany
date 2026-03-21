@@ -7,25 +7,49 @@
  * { role, content: string | Array<{type: 'text', text} | {type: 'tool_use', ...}> }
  */
 function toEntry(msg) {
-  const content = msg.message?.content
-  let text
+  const rawContent = msg.message?.content
 
-  if (typeof content === 'string') {
-    text = content
-  } else if (Array.isArray(content)) {
-    text = content
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join(' ')
-      .replace(/\s+/g, ' ')
+  // Build structured content parts array
+  const parts = []
+
+  if (typeof rawContent === 'string') {
+    if (rawContent.trim()) {
+      parts.push({ type: 'text', text: rawContent.trim() })
+    }
+  } else if (Array.isArray(rawContent)) {
+    for (const block of rawContent) {
+      if (block.type === 'text' && block.text?.trim()) {
+        parts.push({ type: 'text', text: block.text })
+      } else if (block.type === 'tool_use') {
+        parts.push({
+          type: 'tool_use',
+          id: block.id,
+          name: block.name,
+          input: block.input,
+        })
+      } else if (block.type === 'tool_result') {
+        parts.push({
+          type: 'tool_result',
+          tool_use_id: block.tool_use_id,
+          content: block.content,
+        })
+      }
+    }
   }
 
-  if (!text || !text.trim()) return null
+  if (parts.length === 0) return null
+
+  // Derive plain text for backward compatibility
+  const text = parts
+    .filter(p => p.type === 'text')
+    .map(p => p.text)
+    .join('\n\n')
 
   return {
     role: msg.type, // 'user' | 'assistant'
     id: msg.uuid,
-    text: text.trim(),
+    text,
+    content: parts,
   }
 }
 
