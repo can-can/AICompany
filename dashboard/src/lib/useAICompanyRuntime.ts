@@ -118,6 +118,7 @@ export function useAICompanyRuntime(project: string, role: string) {
           role: data.type,
           id: 'sse-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
           text: data.text,
+          content: data.content,
         }
         setMessages(prev => [...prev, msg])
       }

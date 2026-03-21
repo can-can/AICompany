@@ -1,6 +1,23 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
+function extractContentParts(rawContent) {
+  if (!Array.isArray(rawContent)) {
+    return [{ type: 'text', text: String(rawContent) }]
+  }
+  const parts = []
+  for (const block of rawContent) {
+    if (block.type === 'text' && block.text?.trim()) {
+      parts.push({ type: 'text', text: block.text })
+    } else if (block.type === 'tool_use') {
+      parts.push({ type: 'tool_use', id: block.id, name: block.name, input: block.input })
+    } else if (block.type === 'tool_result') {
+      parts.push({ type: 'tool_result', tool_use_id: block.tool_use_id, content: block.content })
+    }
+  }
+  return parts
+}
+
 export function buildPrompt(task, role, projectDir) {
   const taskContent = readFileSync(task.filepath, 'utf8')
   const claudeMdPath = join(projectDir, 'roles', role, 'CLAUDE.md')
@@ -40,22 +57,21 @@ export function createSdkRunner(projectDir, sessionsPath) {
         resultStatus = event.subtype ?? 'done'
       } else if (event.type === 'assistant') {
         // SDK wraps content in event.message.content
-        const content = event.message?.content ?? event.content
-        if (content) {
-          const text = Array.isArray(content)
-            ? content.filter(b => b.type === 'text').map(b => b.text).join('')
-            : String(content)
-          if (text) {
+        const rawContent = event.message?.content ?? event.content
+        if (rawContent) {
+          const parts = extractContentParts(rawContent)
+          const text = parts.filter(p => p.type === 'text').map(p => p.text).join('')
+          if (text || parts.some(p => p.type === 'tool_use')) {
             messages.push(text)
-            onMessage?.({ type: 'assistant', text, sessionId: lastSessionId })
+            onMessage?.({ type: 'assistant', text, content: parts, sessionId: lastSessionId })
           }
         }
       } else if (event.type === 'user') {
-        const content = event.message?.content ?? event.content
-        if (content) {
-          const text = Array.isArray(content)
-            ? content.filter(b => b.type === 'text').map(b => b.text).join('')
-            : String(content)
+        const rawContent = event.message?.content ?? event.content
+        if (rawContent) {
+          const text = Array.isArray(rawContent)
+            ? rawContent.filter(b => b.type === 'text').map(b => b.text).join('')
+            : String(rawContent)
           if (text) {
             onMessage?.({ type: 'user', text, sessionId: lastSessionId })
           }
