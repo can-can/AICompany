@@ -56,9 +56,9 @@ Feature: Send messages to any role at any time
     Then the status bar shows "Agent is working..."
 
   @requires-history
-  Scenario: Load older messages button loads paginated history
+  Scenario: Scrolling to top auto-loads older messages
     When I click on the "pm" role
     And I note the message count
-    And "Load older messages" is visible
-    And I click "Load older messages"
+    And I scroll to the top of the chat
+    And I wait for older messages to load
     Then the message count has increased

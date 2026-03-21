@@ -162,6 +162,16 @@ Then('the long message is visually expanded', async function () {
   expect(height).toBeGreaterThan(300)
 })
 
+When('I scroll to the top of the chat', async function () {
+  const scrollContainer = this.page.locator('.flex-1.overflow-y-auto')
+  await scrollContainer.evaluate(el => el.scrollTo({ top: 0 }))
+})
+
+When('I wait for older messages to load', async function () {
+  // Wait briefly for IntersectionObserver to trigger and load to complete
+  await this.page.waitForTimeout(2000)
+})
+
 Then('no tool call shows {string} status', async function (status) {
   await expect(this.page.getByPlaceholder('Type a message...')).toBeVisible({ timeout: 10000 })
   await expect(this.page.locator('[class*="justify-start"]').first()).toBeVisible({ timeout: 10000 })

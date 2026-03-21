@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import {
   AssistantRuntimeProvider,
   ThreadPrimitive,
@@ -74,26 +74,36 @@ function ThreadMessages() {
   return <AssistantMessage />
 }
 
-function LoadMoreButton({ hasMore, onLoadMore }: { hasMore: boolean; onLoadMore: () => void }) {
+function LoadMoreSentinel({ hasMore, onLoadMore }: { hasMore: boolean; onLoadMore: () => Promise<void> }) {
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(false)
+  const loadingRef = useRef(false)
 
-  const handleClick = async () => {
+  const handleLoad = useCallback(async () => {
+    if (loadingRef.current) return
+    loadingRef.current = true
     setLoading(true)
     await onLoadMore()
     setLoading(false)
-  }
+    loadingRef.current = false
+  }, [onLoadMore])
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || !hasMore) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) handleLoad() },
+      { threshold: 0 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, handleLoad])
 
   if (!hasMore) return null
 
   return (
-    <div className="flex justify-center py-3">
-      <button
-        onClick={handleClick}
-        disabled={loading}
-        className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400"
-      >
-        {loading ? 'Loading...' : 'Load older messages'}
-      </button>
+    <div ref={sentinelRef} className="flex justify-center py-3">
+      {loading && <span className="text-sm text-gray-400">Loading...</span>}
     </div>
   )
 }
@@ -138,7 +148,7 @@ function ChatThreadInner({
     <>
       <AssistantRuntimeProvider runtime={runtime}>
         <div className="flex-1 overflow-y-auto">
-          <LoadMoreButton hasMore={hasMore} onLoadMore={loadMore} />
+          <LoadMoreSentinel hasMore={hasMore} onLoadMore={loadMore} />
           <ThreadPrimitive.Viewport className="flex flex-col">
             <ThreadPrimitive.Messages>
               {() => <ThreadMessages />}
