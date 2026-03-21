@@ -106,3 +106,11 @@ Then('an assistant message contains a {string} element', async function (tag) {
   // Check if any assistant message contains the given HTML element
   await expect(this.page.locator(`[class*="justify-start"] ${tag}`).first()).toBeVisible({ timeout: 5000 })
 })
+
+Then('no tool call shows {string} status', async function (status) {
+  await expect(this.page.getByPlaceholder('Type a message...')).toBeVisible({ timeout: 10000 })
+  await expect(this.page.locator('[class*="justify-start"]').first()).toBeVisible({ timeout: 10000 })
+  // Tool calls that are completed should not show the given status text
+  const pendingBadges = this.page.locator('[class*="justify-start"]').locator(`text=${status}`)
+  await expect(pendingBadges).toHaveCount(0, { timeout: 5000 })
+})

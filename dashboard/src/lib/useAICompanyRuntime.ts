@@ -46,6 +46,35 @@ function mapContentParts(parts: ContentPart[]): MappedPart[] {
   return mapped
 }
 
+/**
+ * Merge tool_result parts from user messages into the preceding assistant
+ * message, so mapContentParts can pair tool_use with its result.
+ * In the Anthropic API, tool_use is in an assistant message and tool_result
+ * is in the following user message — they're never in the same message.
+ */
+export function mergeToolResults(messages: ConversationMessage[]): ConversationMessage[] {
+  const merged: ConversationMessage[] = []
+  for (const msg of messages) {
+    if (msg.role === 'user' && msg.content?.some(p => p.type === 'tool_result')) {
+      // Find the last assistant message to merge tool_results into
+      const lastAssistant = [...merged].reverse().find(m => m.role === 'assistant')
+      if (lastAssistant && lastAssistant.content) {
+        const toolResults = msg.content!.filter(p => p.type === 'tool_result')
+        lastAssistant.content = [...lastAssistant.content, ...toolResults]
+      }
+      // Keep the user message only if it has text content too
+      const textParts = msg.content?.filter(p => p.type === 'text') ?? []
+      if (textParts.length > 0) {
+        merged.push({ ...msg, content: textParts })
+      }
+    } else {
+      // Clone so we don't mutate the original when merging tool_results later
+      merged.push({ ...msg, content: msg.content ? [...msg.content] : undefined })
+    }
+  }
+  return merged
+}
+
 export function convertMessage(entry: ConversationMessage, _index: number): ThreadMessageLike {
   const content = entry.content && entry.content.length > 0
     ? mapContentParts(entry.content)
@@ -184,13 +213,14 @@ export function useAICompanyRuntime(
   }, [project, role])
 
   const convertMessageStable = useMemo(() => convertMessage, [])
+  const mergedMessages = useMemo(() => mergeToolResults(messages), [messages])
 
   const store = useMemo(() => ({
-    messages,
+    messages: mergedMessages,
     convertMessage: convertMessageStable,
     isRunning,
     onNew,
-  }), [messages, convertMessageStable, isRunning, onNew])
+  }), [mergedMessages, convertMessageStable, isRunning, onNew])
 
   const runtime = useExternalStoreRuntime(store)
 
