@@ -51,7 +51,7 @@ export function createFileWatcher(tasksDir, roleManager, logger) {
 
       logger.add('info', task.to, `file event: ${task.id} status=${task.status}`)
       if (task.to) roleManager.scheduleDispatch(task.to)
-      if (task.from && task.from !== 'human') roleManager.scheduleDispatch(task.from)
+      if (task.from && task.from !== 'human') roleManager.notifyTaskDone(task.from, task)
     }
   }
 

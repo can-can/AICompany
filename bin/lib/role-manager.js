@@ -177,6 +177,17 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
     }
   }
 
+  function notifyTaskDone(role, task) {
+    if (!runners[role]) return
+    const statusLabel = task.status === 'rejected' ? 'rejected' : 'completed'
+    const msg = `Task #${task.id} "${task.title}" assigned to ${task.to} has been ${statusLabel}. Read \`../../tasks/${task.filepath.split('/').pop()}\` for details.`
+    const runner = runners[role]
+    runner.inputQueue.push(msg)
+    if (runner.state === 'waiting_human' || runner.state === 'free') {
+      scheduleDispatch(role)
+    }
+  }
+
   function getState(role) {
     return getRunner(role).state
   }
@@ -271,5 +282,5 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
     await Promise.all(promises)
   }
 
-  return { enqueue, getState, getStatus, scheduleDispatch, sendInput, loadSessions, getSessions, initializeSessions, restoreInProgressTasks, waitIdle, emitter }
+  return { enqueue, getState, getStatus, scheduleDispatch, sendInput, notifyTaskDone, loadSessions, getSessions, initializeSessions, restoreInProgressTasks, waitIdle, emitter }
 }

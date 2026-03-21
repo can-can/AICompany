@@ -19,19 +19,8 @@ function extractContentParts(rawContent) {
 }
 
 export function buildPrompt(task, role, projectDir) {
-  const taskContent = readFileSync(task.filepath, 'utf8')
-  const claudeMdPath = join(projectDir, 'roles', role, 'CLAUDE.md')
-  const companyMdPath = join(projectDir, 'company.md')
-
-  const claudeMd = existsSync(claudeMdPath) ? readFileSync(claudeMdPath, 'utf8') : ''
-  const companyMd = existsSync(companyMdPath) ? readFileSync(companyMdPath, 'utf8') : ''
-
-  return [
-    `# Your Role\n${claudeMd}`,
-    `# Company Context\n${companyMd}`,
-    `# Your Task\n${taskContent}`,
-    `You are the ${role}. Complete the task above. When done, update the task file status to "done" (or "rejected" with a reason). Update your memory.md with any handoff notes.`
-  ].join('\n\n---\n\n')
+  const taskRelPath = `../../tasks/${task.filepath.split('/').pop()}`
+  return `New task assigned to you: read \`${taskRelPath}\` and complete it following your role instructions.`
 }
 
 export function createSdkRunner(projectDir, sessionsPath) {
