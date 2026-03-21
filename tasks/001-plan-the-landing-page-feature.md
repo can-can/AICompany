@@ -3,8 +3,8 @@ id: "001"
 parent: null
 from: human
 to: pm
-owner:
-status: pending
+owner: pm
+status: done
 priority: medium
 created: 2026-03-13
 updated: 2026-03-13

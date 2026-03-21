@@ -6,8 +6,8 @@ import {
   ComposerPrimitive,
   useMessage,
 } from '@assistant-ui/react'
-import type { ProjectStatus } from '../lib/api'
-import { useAICompanyRuntime } from '../lib/useAICompanyRuntime'
+import type { ProjectStatus, ConversationMessage, RoleStatus } from '../lib/api'
+import { useAICompanyData, useAICompanyRuntime } from '../lib/useAICompanyRuntime'
 import MarkdownText from './MarkdownText'
 import ToolCallUI from './ToolCallUI'
 
@@ -92,15 +92,32 @@ function LoadMoreButton({ hasMore, onLoadMore }: { hasMore: boolean; onLoadMore:
   )
 }
 
-export default function ChatThread({ project, role, onStatusChange }: { project: string; role: string; onStatusChange?: (status: ProjectStatus | null) => void }) {
-  const { runtime, roleStatus, projectStatus, hasMore, loadMore } = useAICompanyRuntime(project, role)
-
-  useEffect(() => {
-    onStatusChange?.(projectStatus)
-  }, [projectStatus, onStatusChange])
+/**
+ * Inner component that creates the assistant-ui runtime.
+ * Only mounted AFTER initial messages have loaded, so the runtime
+ * starts with actual messages (avoiding empty→full remount).
+ */
+function ChatThreadInner({
+  project,
+  role,
+  messages,
+  roleStatus,
+  projectStatus,
+  hasMore,
+  loadMore,
+}: {
+  project: string
+  role: string
+  messages: ConversationMessage[]
+  roleStatus: RoleStatus | null
+  projectStatus: ProjectStatus | null
+  hasMore: boolean
+  loadMore: () => Promise<void>
+}) {
+  const { runtime } = useAICompanyRuntime(project, role, messages, roleStatus, projectStatus)
 
   return (
-    <div className="flex flex-col h-full">
+    <>
       <AssistantRuntimeProvider runtime={runtime}>
         <div className="flex-1 overflow-y-auto">
           <LoadMoreButton hasMore={hasMore} onLoadMore={loadMore} />
@@ -117,6 +134,37 @@ export default function ChatThread({ project, role, onStatusChange }: { project:
           {statusLabels[roleStatus.state] ?? roleStatus.state}
         </div>
       )}
+    </>
+  )
+}
+
+export default function ChatThread({ project, role, onStatusChange }: { project: string; role: string; onStatusChange?: (status: ProjectStatus | null) => void }) {
+  const { messages, roleStatus, projectStatus, hasMore, loadMore, initialLoaded } = useAICompanyData(project, role)
+
+  useEffect(() => {
+    onStatusChange?.(projectStatus)
+  }, [projectStatus, onStatusChange])
+
+  if (!initialLoaded) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center text-gray-400 text-sm">
+        Loading...
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <ChatThreadInner
+        key={role}
+        project={project}
+        role={role}
+        messages={messages}
+        roleStatus={roleStatus}
+        projectStatus={projectStatus}
+        hasMore={hasMore}
+        loadMore={loadMore}
+      />
     </div>
   )
 }

@@ -2,7 +2,7 @@ Feature: Send messages to any role at any time
 
   Background:
     Given the dashboard is open
-    And I navigate to the "RabT" project
+    And I navigate to the "test-company" project
 
   Scenario: Composer is enabled for a free role
     When I click on the "engineer" role
@@ -11,7 +11,7 @@ Feature: Send messages to any role at any time
     And the Send button is disabled
 
   Scenario: Composer is enabled for a waiting_human role
-    When I click on the "qa" role
+    When I click on the "pm" role
     Then the composer input is visible
     And the composer input placeholder is "Type a message..."
 
@@ -28,7 +28,7 @@ Feature: Send messages to any role at any time
     When I wait for an agent response
     Then an assistant message is visible
     When I refresh the page
-    And I navigate to the "RabT" project
+    And I navigate to the "test-company" project
     And I click on the "engineer" role
     Then the unique test message appears in the chat
     And an assistant message is visible
@@ -55,8 +55,9 @@ Feature: Send messages to any role at any time
     And I click Send
     Then the status bar shows "Agent is working..."
 
+  @requires-history
   Scenario: Load older messages button loads paginated history
-    When I click on the "qa" role
+    When I click on the "pm" role
     And I note the message count
     And "Load older messages" is visible
     And I click "Load older messages"

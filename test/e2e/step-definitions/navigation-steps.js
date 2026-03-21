@@ -9,7 +9,13 @@ When('I click on the {string} project card', async function (project) {
 When('I click on the {string} sidebar role', async function (role) {
   // Sidebar shows 3-letter abbreviations but has title attribute with full name
   await this.page.getByTitle(new RegExp(role, 'i')).click()
-  await this.page.waitForLoadState('domcontentloaded')
+  // Wait for client-side navigation and initial data load to complete
+  await this.page.waitForURL(new RegExp(`/chat/${role}`, 'i'))
+  // Wait for the composer to appear (initial messages loaded, runtime ready)
+  const { expect } = await import('@playwright/test')
+  await expect(this.page.getByPlaceholder('Type a message...')).toBeVisible()
+  // Allow runtime to stabilize after initial load
+  await this.page.waitForTimeout(300)
 })
 
 Then('the project heading {string} is visible', async function (heading) {
@@ -22,8 +28,8 @@ Then('the roles list is visible', async function () {
 })
 
 Then('the role name {string} is visible', async function (name) {
-  // Role name is a <span> with CSS uppercase — DOM text is lowercase
-  await expect(this.page.getByText(new RegExp(`^${name}$`, 'i'))).toBeVisible()
+  // Role name is a <span> in the header with CSS uppercase
+  await expect(this.page.locator('header span.uppercase', { hasText: new RegExp(name, 'i') })).toBeVisible()
 })
 
 Then('the projects list is visible', async function () {

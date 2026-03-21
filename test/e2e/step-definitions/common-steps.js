@@ -20,6 +20,11 @@ When('I wait for an agent response', async function () {
   const before = await this.page.locator('[class*="justify-start"]').count()
   await expect(this.page.locator('[class*="justify-start"]'))
     .toHaveCount(before + 1, { timeout: 90000 })
+  // Wait for the agent to return to idle (free/waiting_human) so all messages
+  // are stored in the SDK session. Without this, a subsequent refresh might
+  // not see the message because the SDK hasn't finished processing yet.
+  await expect(this.page.getByText('Agent is working...')).not.toBeVisible({ timeout: 90000 })
+  await expect(this.page.getByText('Agent is finishing up...')).not.toBeVisible({ timeout: 10000 })
 })
 
 // Shared step used by both navigation and chat features

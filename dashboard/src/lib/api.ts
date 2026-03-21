@@ -87,7 +87,7 @@ export type ConversationPage = {
 export async function fetchConversation(
   project: string,
   role: string,
-  limit = 10,
+  limit = 30,
   before?: string,
 ): Promise<ConversationPage> {
   const params = new URLSearchParams({ project, role, limit: String(limit) })

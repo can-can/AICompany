@@ -2,22 +2,20 @@
 
 ## Completed Tasks
 
-### 002 - Build the landing page (from PM spec via task 001)
-- Created `public/index.html` — landing page with nav, hero, features (3 cards), how-it-works (3 steps), roles, footer
-- Created `public/styles.css` — dark theme, fully responsive (mobile/tablet/desktop)
-- Updated `bin/lib/web-server.js` — homepage served at `/`, dashboard moved to `/dashboard/`
-- All 18 existing tests pass after changes
-- Mobile nav toggle and smooth scroll via inline script
-- PM acceptance criteria met:
-  - [x] Hero with headline, subtitle, CTA
-  - [x] 3 feature cards: AI-Powered, Coordinated Roles, Task Automation
-  - [x] 3-step How It Works: Human -> PM -> Engineer/QA
-  - [x] Footer with copyright
-  - [x] Responsive layout
-  - [x] Clean, valid HTML and CSS
+### 006 - Build the landing page (from PM task 001)
+- Created `public/index.html` — semantic HTML5 landing page (header, section, footer)
+- Created `public/styles.css` — dark theme, responsive (mobile < 480px, tablet < 768px, desktop)
+- Sections: Hero (headline + CTA), Features (3 cards), How It Works (3 steps), Footer (copyright + links)
+- Mobile nav toggle with aria-expanded, smooth scroll for anchor links
+- All 43 tests pass
+- Acceptance criteria met:
+  - [x] All 4 sections render correctly
+  - [x] Responsive across mobile, tablet, desktop
+  - [x] Semantic HTML5 elements throughout
+  - [x] No broken links or missing assets
 
 ## Architecture Notes
-- Public-facing homepage lives in `public/`
+- Landing page lives in `public/` (index.html + styles.css)
 - Internal dashboard lives in `bin/dashboard/`
-- Express serves `public/` at root, `bin/dashboard/` at `/dashboard/`
-- API endpoints unchanged: `/api/status`, `/api/tasks`, `/api/logs`
+- Web server currently redirects `/` to `/dashboard` — landing page is servable as static files
+- API endpoints: `/api/projects`, `/api/status`, `/api/tasks`, `/api/logs`, `/api/next-id`

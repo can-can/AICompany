@@ -72,6 +72,13 @@ async function activateProject({ name, path }) {
       } catch {}
     }
 
+    // Restore waiting_human state for in_progress tasks before watcher starts
+    const existingTasks = buildTaskList(tasksDir)
+    roleManager.restoreInProgressTasks(existingTasks)
+
+    // Initialize sessions for roles that don't have one yet
+    await roleManager.initializeSessions()
+
     const taskStore = { getAll: () => buildTaskList(tasksDir) }
     const watcher = createFileWatcher(tasksDir, roleManager, logger)
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   useExternalStoreRuntime,
   type ThreadMessageLike,
@@ -58,14 +58,16 @@ export function convertMessage(entry: ConversationMessage, _index: number): Thre
   }
 }
 
-export function useAICompanyRuntime(project: string, role: string) {
+/**
+ * Manages data loading (messages, SSE, polling) separately from the runtime.
+ * Returns data + setters so a child component can create the runtime after initial load.
+ */
+export function useAICompanyData(project: string, role: string) {
   const [messages, setMessages] = useState<ConversationMessage[]>([])
   const [roleStatus, setRoleStatus] = useState<RoleStatus | null>(null)
   const [projectStatus, setProjectStatus] = useState<ProjectStatus | null>(null)
   const [hasMore, setHasMore] = useState(false)
-  // Track the oldest REST-fetched message ID for pagination cursoring.
-  // SSE messages get synthetic IDs that don't exist in the SDK transcript,
-  // so we must never use them as the `before` cursor.
+  const [initialLoaded, setInitialLoaded] = useState(false)
   const oldestRestIdRef = useRef<string | null>(null)
 
   // Load initial page of messages
@@ -76,6 +78,7 @@ export function useAICompanyRuntime(project: string, role: string) {
       if (cancelled) return
       setMessages(page.messages)
       setHasMore(page.hasMore)
+      setInitialLoaded(true)
       if (page.messages.length > 0) {
         oldestRestIdRef.current = page.messages[0].id
       }
@@ -93,11 +96,9 @@ export function useAICompanyRuntime(project: string, role: string) {
       const data = JSON.parse(event.data)
 
       if (data.type === 'connected') {
-        // Initial connection includes current state
         if (data.state) {
           setRoleStatus(prev => {
             if (prev) return { ...prev, state: data.state }
-            // Bootstrap a minimal RoleStatus if we haven't polled yet
             return { state: data.state, activeTask: null, queueDepth: 0, lastMessages: [] }
           })
         }
@@ -112,7 +113,6 @@ export function useAICompanyRuntime(project: string, role: string) {
         return
       }
 
-      // Real-time message from SDK or sendInput
       if (data.type === 'assistant' || data.type === 'user') {
         const msg: ConversationMessage = {
           role: data.type,
@@ -124,15 +124,12 @@ export function useAICompanyRuntime(project: string, role: string) {
       }
     }
 
-    sse.onerror = () => {
-      // EventSource auto-reconnects; no action needed
-    }
+    sse.onerror = () => {}
 
     return () => sse.close()
   }, [project, role])
 
-  // Poll status (for activeTask, queueDepth, etc.) at a slower rate
-  // since state changes now come via SSE
+  // Poll status
   const poll = useCallback(async () => {
     const data = await fetchStatus(project)
     if (!data) return
@@ -147,9 +144,6 @@ export function useAICompanyRuntime(project: string, role: string) {
     return () => clearInterval(id)
   }, [poll])
 
-  // Load older messages (scroll-up pagination)
-  // Uses oldestRestIdRef as cursor instead of messages[0].id, because
-  // SSE messages have synthetic IDs that don't exist in the SDK transcript.
   const loadMore = useCallback(async () => {
     if (!hasMore || !oldestRestIdRef.current) return
     const page = await fetchConversation(project, role, 10, oldestRestIdRef.current)
@@ -160,25 +154,45 @@ export function useAICompanyRuntime(project: string, role: string) {
     }
   }, [project, role, hasMore])
 
-  // Don't pass isRunning=true to assistant-ui — it blocks Enter-to-submit
-  // in ComposerPrimitive.Input. We show working/ready state in our own status bar.
+  return { messages, setMessages, roleStatus, projectStatus, hasMore, loadMore, initialLoaded }
+}
+
+/**
+ * Creates the assistant-ui runtime from already-loaded data.
+ * This hook should only be called AFTER initial messages have loaded,
+ * so the runtime starts with actual messages (avoiding the empty→full
+ * transition that causes assistant-ui to remount the thread).
+ */
+export function useAICompanyRuntime(
+  project: string,
+  role: string,
+  messages: ConversationMessage[],
+  roleStatus: RoleStatus | null,
+  projectStatus: ProjectStatus | null,
+) {
   const isRunning = false
   const canSend = roleStatus != null
 
+  const roleStatusRef = useRef(roleStatus)
+  roleStatusRef.current = roleStatus
+
   const onNew = useCallback(async (message: AppendMessage) => {
-    if (!roleStatus) return
+    if (!roleStatusRef.current) return
     const textPart = message.content.find((c) => c.type === 'text')
     if (!textPart || textPart.type !== 'text') return
-    // Human message will arrive via SSE (emitted by sendInput on the server)
     await sendMessage(project, role, textPart.text)
-  }, [project, role, roleStatus])
+  }, [project, role])
 
-  const runtime = useExternalStoreRuntime({
+  const convertMessageStable = useMemo(() => convertMessage, [])
+
+  const store = useMemo(() => ({
     messages,
-    convertMessage,
+    convertMessage: convertMessageStable,
     isRunning,
     onNew,
-  })
+  }), [messages, convertMessageStable, isRunning, onNew])
 
-  return { runtime, roleStatus, projectStatus, canSend, hasMore, loadMore }
+  const runtime = useExternalStoreRuntime(store)
+
+  return { runtime, canSend }
 }
