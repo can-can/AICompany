@@ -132,6 +132,38 @@ function ChatThreadInner({
 }) {
   const { runtime } = useAICompanyRuntime(project, role, messages, roleStatus, projectStatus)
   const [stopping, setStopping] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const isAtBottomRef = useRef(true)
+
+  // Track whether user is at the bottom of the scroll container
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const threshold = 50
+    isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+  }, [])
+
+  // Auto-scroll to bottom when new messages arrive (only if already at bottom)
+  const prevMessageCountRef = useRef(messages.length)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    if (messages.length > prevMessageCountRef.current) {
+      if (isAtBottomRef.current) {
+        // Use requestAnimationFrame to ensure DOM has updated
+        requestAnimationFrame(() => {
+          el.scrollTo({ top: el.scrollHeight })
+        })
+      }
+    }
+    prevMessageCountRef.current = messages.length
+  }, [messages.length])
+
+  // Scroll to bottom on initial load
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [])
 
   const handleStop = async () => {
     setStopping(true)
@@ -147,7 +179,7 @@ function ChatThreadInner({
   return (
     <>
       <AssistantRuntimeProvider runtime={runtime}>
-        <div className="flex-1 overflow-y-auto">
+        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
           <LoadMoreSentinel hasMore={hasMore} onLoadMore={loadMore} />
           <ThreadPrimitive.Viewport className="flex flex-col">
             <ThreadPrimitive.Messages>

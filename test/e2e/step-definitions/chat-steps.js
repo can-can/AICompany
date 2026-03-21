@@ -162,6 +162,17 @@ Then('the long message is visually expanded', async function () {
   expect(height).toBeGreaterThan(300)
 })
 
+Then('the chat is scrolled to the bottom', async function () {
+  const container = this.page.locator('.flex-1.overflow-y-auto')
+  await expect(container).toBeVisible()
+  // Allow a brief moment for smooth scroll to finish
+  await this.page.waitForTimeout(500)
+  const isAtBottom = await container.evaluate(el => {
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 50
+  })
+  expect(isAtBottom).toBe(true)
+})
+
 When('I scroll to the top of the chat', async function () {
   const scrollContainer = this.page.locator('.flex-1.overflow-y-auto')
   await scrollContainer.evaluate(el => el.scrollTo({ top: 0 }))
