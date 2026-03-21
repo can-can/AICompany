@@ -168,7 +168,7 @@ export function useAICompanyRuntime(
   role: string,
   messages: ConversationMessage[],
   roleStatus: RoleStatus | null,
-  projectStatus: ProjectStatus | null,
+  _projectStatus: ProjectStatus | null,
 ) {
   const isRunning = false
   const canSend = roleStatus != null

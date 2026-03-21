@@ -91,3 +91,18 @@ When('{string} is visible', async function (text) {
 When('I click {string}', async function (text) {
   await this.page.getByText(text, { exact: false }).click()
 })
+
+Then('the last assistant message contains a {string} element', async function (tag) {
+  const lastAssistant = this.page.locator('[class*="justify-start"]').last()
+  await expect(lastAssistant).toBeVisible({ timeout: 10000 })
+  await expect(lastAssistant.locator(tag).first()).toBeVisible({ timeout: 5000 })
+})
+
+Then('an assistant message contains a {string} element', async function (tag) {
+  // Wait for chat to load (composer visible means messages are rendered)
+  await expect(this.page.getByPlaceholder('Type a message...')).toBeVisible({ timeout: 10000 })
+  // Wait for at least one assistant message
+  await expect(this.page.locator('[class*="justify-start"]').first()).toBeVisible({ timeout: 10000 })
+  // Check if any assistant message contains the given HTML element
+  await expect(this.page.locator(`[class*="justify-start"] ${tag}`).first()).toBeVisible({ timeout: 5000 })
+})
