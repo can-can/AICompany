@@ -1,26 +1,29 @@
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown'
 import remarkGfm from 'remark-gfm'
-import { type ComponentPropsWithoutRef, type FC, memo } from 'react'
+import { type FC, memo } from 'react'
 import ShikiHighlighter from 'react-shiki'
 
-const SyntaxHighlighter: FC<ComponentPropsWithoutRef<'code'> & { language?: string }> = ({
+const SyntaxHighlighter: FC<{ language?: string; code?: string; children?: string }> = ({
   language,
+  code,
   children,
 }) => {
   return (
     <ShikiHighlighter language={language ?? 'text'} theme="github-dark">
-      {String(children)}
+      {String(code ?? children ?? '')}
     </ShikiHighlighter>
   )
 }
 
+const remarkPlugins = [remarkGfm]
+const MemoizedHighlighter = memo(SyntaxHighlighter)
+const markdownComponents = { SyntaxHighlighter: MemoizedHighlighter }
+
 const MarkdownText = () => (
   <MarkdownTextPrimitive
-    remarkPlugins={[remarkGfm]}
+    remarkPlugins={remarkPlugins}
     className="prose prose-sm max-w-none dark:prose-invert prose-pre:p-0 prose-pre:bg-transparent"
-    components={{
-      SyntaxHighlighter: memo(SyntaxHighlighter),
-    }}
+    components={markdownComponents}
   />
 )
 

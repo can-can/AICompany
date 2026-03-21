@@ -32,11 +32,21 @@ test('extractMessages converts SDK SessionMessage array to chat entries', () => 
 
   const result = extractMessages(sdkMessages)
   assert.equal(result.length, 2)
-  assert.deepEqual(result[0], { role: 'user', id: 'uuid-1', text: 'Hello agent' })
-  assert.deepEqual(result[1], { role: 'assistant', id: 'uuid-2', text: 'Hi there! How can I help?' })
+  assert.deepEqual(result[0], {
+    role: 'user', id: 'uuid-1', text: 'Hello agent',
+    content: [{ type: 'text', text: 'Hello agent' }],
+  })
+  assert.deepEqual(result[1], {
+    role: 'assistant', id: 'uuid-2', text: 'Hi there!\n\n How can I help?',
+    content: [
+      { type: 'text', text: 'Hi there!' },
+      { type: 'tool_use', id: 'tu1', name: 'Read', input: {} },
+      { type: 'text', text: ' How can I help?' },
+    ],
+  })
 })
 
-test('extractMessages skips messages with no text content', () => {
+test('extractMessages keeps tool-use-only messages with content parts', () => {
   const sdkMessages = [
     {
       type: 'assistant',
@@ -51,7 +61,11 @@ test('extractMessages skips messages with no text content', () => {
   ]
 
   const result = extractMessages(sdkMessages)
-  assert.equal(result.length, 0)
+  assert.equal(result.length, 1)
+  assert.deepEqual(result[0], {
+    role: 'assistant', id: 'uuid-3', text: '',
+    content: [{ type: 'tool_use', id: 'tu2', name: 'Bash', input: {} }],
+  })
 })
 
 test('extractMessages handles string content (user messages)', () => {
