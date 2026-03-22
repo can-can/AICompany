@@ -58,7 +58,7 @@ export default function TaskDetailView() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-2 text-sm">
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center gap-2 text-sm">
         <Link to="/" className="text-gray-400 hover:text-gray-600">All Projects</Link>
         <span className="text-gray-300">/</span>
         <Link to={`/${project}`} className="text-gray-400 hover:text-gray-600">{project}</Link>
@@ -66,8 +66,8 @@ export default function TaskDetailView() {
         <span className="text-gray-900 font-medium">Task #{task.id}</span>
       </header>
 
-      <main className="max-w-3xl mx-auto p-6 space-y-6">
-        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+      <main className="max-w-3xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 space-y-4">
           <h1 className="text-xl font-semibold text-gray-900">{task.title}</h1>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -119,7 +119,7 @@ export default function TaskDetailView() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
           <div className="prose prose-sm max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{task.body}</ReactMarkdown>
           </div>

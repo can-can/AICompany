@@ -24,10 +24,10 @@ export default function ProjectListView() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
         <h1 className="text-lg font-semibold text-gray-900">AI Company</h1>
       </header>
-      <main className="max-w-4xl mx-auto p-6">
+      <main className="max-w-4xl mx-auto p-4 sm:p-6">
         <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Projects</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((p) => (

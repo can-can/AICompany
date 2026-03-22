@@ -16,14 +16,14 @@ export default function ChatView() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-2 text-sm shrink-0">
-        <Link to="/" className="text-gray-400 hover:text-gray-600">All Projects</Link>
-        <span className="text-gray-300">/</span>
-        <Link to={`/${encodeURIComponent(project!)}`} className="text-gray-400 hover:text-gray-600">{project}</Link>
-        <span className="text-gray-300">/</span>
-        <span className="font-semibold text-gray-900 uppercase">{role}</span>
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-2 text-sm shrink-0 min-w-0">
+        <Link to="/" className="text-gray-400 hover:text-gray-600 shrink-0">All Projects</Link>
+        <span className="text-gray-300 shrink-0">/</span>
+        <Link to={`/${encodeURIComponent(project!)}`} className="text-gray-400 hover:text-gray-600 shrink-0">{project}</Link>
+        <span className="text-gray-300 shrink-0">/</span>
+        <span className="font-semibold text-gray-900 uppercase shrink-0">{role}</span>
         {activeTask && (
-          <span className="ml-4 text-gray-400">
+          <span className="ml-2 sm:ml-4 text-gray-400 truncate min-w-0">
             #{activeTask.id} {activeTask.title}
           </span>
         )}

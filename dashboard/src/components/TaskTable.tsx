@@ -44,11 +44,11 @@ export default function TaskTable({ tasks, project }: { tasks: TaskItem[]; proje
           <tr className="border-b border-gray-200 text-left text-gray-500 font-medium">
             <th className="py-2 px-3">ID</th>
             <th className="py-2 px-3">Title</th>
-            <th className="py-2 px-3">From</th>
-            <th className="py-2 px-3">To</th>
-            <th className="py-2 px-3">Owner</th>
+            <th className="py-2 px-3 hidden sm:table-cell">From</th>
+            <th className="py-2 px-3 hidden sm:table-cell">To</th>
+            <th className="py-2 px-3 hidden sm:table-cell">Owner</th>
             <th className="py-2 px-3">Status</th>
-            <th className="py-2 px-3">Priority</th>
+            <th className="py-2 px-3 hidden sm:table-cell">Priority</th>
           </tr>
         </thead>
         <tbody>
@@ -60,15 +60,15 @@ export default function TaskTable({ tasks, project }: { tasks: TaskItem[]; proje
             >
               <td className="py-2 px-3 text-gray-400">{t.id}</td>
               <td className="py-2 px-3 text-blue-600">{t.title}</td>
-              <td className="py-2 px-3 text-gray-400">{t.from ?? '-'}</td>
-              <td className="py-2 px-3 text-gray-900">{t.to ?? '-'}</td>
-              <td className="py-2 px-3 text-gray-400">{t.owner ?? '-'}</td>
+              <td className="py-2 px-3 text-gray-400 hidden sm:table-cell">{t.from ?? '-'}</td>
+              <td className="py-2 px-3 text-gray-900 hidden sm:table-cell">{t.to ?? '-'}</td>
+              <td className="py-2 px-3 text-gray-400 hidden sm:table-cell">{t.owner ?? '-'}</td>
               <td className="py-2 px-3">
                 <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${badgeColor[t.status] ?? badgeColor.pending}`}>
                   {t.status}
                 </span>
               </td>
-              <td className="py-2 px-3 text-gray-400">{t.priority ?? '-'}</td>
+              <td className="py-2 px-3 text-gray-400 hidden sm:table-cell">{t.priority ?? '-'}</td>
             </tr>
           ))}
         </tbody>

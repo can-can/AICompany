@@ -33,7 +33,7 @@ export default function DashboardView() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-2">
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center gap-2">
         <Link to="/" className="text-gray-400 hover:text-gray-600 text-sm">All Projects</Link>
         <span className="text-gray-300">/</span>
         <h1 className="text-lg font-semibold text-gray-900">{project}</h1>
@@ -45,7 +45,7 @@ export default function DashboardView() {
         </Link>
       </header>
 
-      <main className="max-w-5xl mx-auto p-6 space-y-8">
+      <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
         {offline ? (
           <div className="text-center py-16 text-gray-500">
             <p className="text-lg font-medium">Project is offline</p>

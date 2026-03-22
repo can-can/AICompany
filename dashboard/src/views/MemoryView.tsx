@@ -46,14 +46,14 @@ export default function MemoryView() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-2 text-sm shrink-0">
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-2 text-sm shrink-0">
         <Link to="/" className="text-gray-400 hover:text-gray-600">All Projects</Link>
         <span className="text-gray-300">/</span>
         <Link to={`/${encodeURIComponent(project!)}`} className="text-gray-400 hover:text-gray-600">{project}</Link>
         <span className="text-gray-300">/</span>
         <span className="font-semibold text-gray-900">Memory</span>
       </header>
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         <MemoryFileList
           files={files}
           activePath={activePath}

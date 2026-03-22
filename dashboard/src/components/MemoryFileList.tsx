@@ -34,14 +34,14 @@ export default function MemoryFileList({
   const grouped = groupFiles(files)
 
   const itemClass = (path: string) =>
-    `block w-full text-left px-3 py-1.5 text-sm rounded cursor-pointer truncate ${
+    `shrink-0 text-left px-3 py-1.5 text-sm rounded cursor-pointer truncate ${
       path === activePath
         ? 'bg-blue-50 text-blue-700 font-medium'
         : 'text-gray-700 hover:bg-gray-100'
     }`
 
   return (
-    <nav className="w-52 shrink-0 border-r border-gray-200 bg-white p-3 overflow-y-auto">
+    <nav className="shrink-0 border-b md:border-b-0 md:border-r border-gray-200 bg-white overflow-x-auto md:overflow-x-visible md:overflow-y-auto md:w-52 flex md:flex-col items-start gap-1 p-2 md:p-3">
       {grouped.company && (
         <button
           className={itemClass('company.md')}
@@ -54,8 +54,8 @@ export default function MemoryFileList({
       {Object.entries(grouped.roles)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([role, roleFiles]) => (
-          <div key={role} className="mt-3">
-            <div className="px-3 py-1 text-xs font-medium text-gray-400 uppercase tracking-wide">
+          <div key={role} className="flex md:flex-col gap-1 md:mt-2 shrink-0">
+            <div className="hidden md:block px-3 py-1 text-xs font-medium text-gray-400 uppercase tracking-wide">
               {role}
             </div>
             {roleFiles.map((f) => {
@@ -66,6 +66,7 @@ export default function MemoryFileList({
                   className={itemClass(f.path)}
                   onClick={() => onSelect(f.path)}
                 >
+                  <span className="md:hidden text-gray-400 mr-1">{role}/</span>
                   {filename}
                 </button>
               )
