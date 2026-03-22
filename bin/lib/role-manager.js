@@ -315,5 +315,17 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
     return true
   }
 
-  return { enqueue, getState, getStatus, scheduleDispatch, sendInput, notifyTaskDone, stopAgent, loadSessions, getSessions, initializeSessions, restoreInProgressTasks, waitIdle, emitter }
+  function clearConversation(role) {
+    const runner = getRunner(role)
+    // Stop the agent first if running
+    if (runner.sdkInFlight) {
+      stopAgent(role)
+    }
+    runner.sessionId = null
+    runner.lastMessages = []
+    logger.add('info', role, 'conversation cleared by user')
+    return true
+  }
+
+  return { enqueue, getState, getStatus, scheduleDispatch, sendInput, notifyTaskDone, stopAgent, clearConversation, loadSessions, getSessions, initializeSessions, restoreInProgressTasks, waitIdle, emitter }
 }

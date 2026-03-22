@@ -93,6 +93,15 @@ export async function fetchTask(project: string, id: string): Promise<TaskDetail
   return res.json()
 }
 
+export async function clearConversation(project: string, role: string): Promise<{ ok: boolean; cleared: boolean }> {
+  const res = await fetch(`/api/conversation?project=${encodeURIComponent(project)}&role=${encodeURIComponent(role)}`, {
+    method: 'DELETE',
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to clear conversation')
+  return data
+}
+
 export async function updateTaskStatus(project: string, id: string, status: string): Promise<{ ok: boolean }> {
   const res = await fetch(`/api/task/status?project=${encodeURIComponent(project)}`, {
     method: 'PATCH',

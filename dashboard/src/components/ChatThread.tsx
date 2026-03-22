@@ -7,7 +7,7 @@ import {
   useMessage,
 } from '@assistant-ui/react'
 import type { ProjectStatus, ConversationMessage, RoleStatus } from '../lib/api'
-import { stopAgent } from '../lib/api'
+import { stopAgent, clearConversation } from '../lib/api'
 import { useAICompanyData, useAICompanyRuntime } from '../lib/useAICompanyRuntime'
 import MarkdownText from './MarkdownText'
 import ToolCallUI from './ToolCallUI'
@@ -61,6 +61,7 @@ function Composer({ project, role, onClearMessages }: { project: string; role: s
         stopAgent(project, role)
         break
       case 'clear':
+        clearConversation(project, role)
         onClearMessages()
         break
       case 'help':

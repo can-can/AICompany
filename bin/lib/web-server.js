@@ -89,6 +89,22 @@ export function createWebServer(projectStore, { port = 4000 } = {}) {
     }
   })
 
+  app.delete('/api/conversation', (req, res) => {
+    const project = requireProject(req, res)
+    if (!project) return
+    const { role } = req.query
+    if (!role) {
+      res.status(400).json({ error: 'role query parameter required' })
+      return
+    }
+    try {
+      const cleared = project.roleManager.clearConversation(role)
+      res.json({ ok: true, cleared })
+    } catch (err) {
+      res.status(400).json({ error: err.message })
+    }
+  })
+
   app.get('/api/task', (req, res) => {
     const project = requireProject(req, res)
     if (!project) return
