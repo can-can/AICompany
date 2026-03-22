@@ -42,9 +42,11 @@ test('file watcher dispatches when task transitions to done via change', async (
   mkdirSync(dir, { recursive: true })
   const logger = makeLogger()
   const dispatched = []
+  const notified = []
   const roleManager = {
     enqueue: () => {},
-    scheduleDispatch: (role) => dispatched.push(role)
+    scheduleDispatch: (role) => dispatched.push(role),
+    notifyTaskDone: (role) => notified.push(role)
   }
 
   const watcher = createFileWatcher(dir, roleManager, logger)
@@ -60,8 +62,8 @@ test('file watcher dispatches when task transitions to done via change', async (
   writeFileSync(join(dir, '002-task.md'), `---\nid: "002"\ntitle: "Task"\nstatus: done\nfrom: pm\nto: engineer\npriority: medium\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n`)
   await waitMs(500)
 
-  assert.ok(dispatched.includes('engineer'), 'should dispatch to-role')
-  assert.ok(dispatched.includes('pm'), 'should dispatch from-role')
+  assert.ok(dispatched.includes('engineer'), 'should scheduleDispatch to-role')
+  assert.ok(notified.includes('pm'), 'should notifyTaskDone from-role')
 })
 
 test('file watcher does NOT dispatch for done tasks found on initial scan', async (t) => {
@@ -92,7 +94,8 @@ test('file watcher does NOT re-dispatch when done task is re-written with same s
   const dispatched = []
   const roleManager = {
     enqueue: () => {},
-    scheduleDispatch: (role) => dispatched.push(role)
+    scheduleDispatch: (role) => dispatched.push(role),
+    notifyTaskDone: () => {}
   }
 
   const watcher = createFileWatcher(dir, roleManager, logger)

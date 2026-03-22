@@ -6,7 +6,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from 
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-export function createWebServer(projectStore, { port = 4000 } = {}) {
+export async function createWebServer(projectStore, { port = 4000 } = {}) {
   const app = express()
 
   app.use(express.json())
@@ -313,8 +313,9 @@ export function createWebServer(projectStore, { port = 4000 } = {}) {
   })
 
   const server = app.listen(port, '0.0.0.0')
-  server.on('error', (err) => {
-    console.error(`Web server error: ${err.message}`)
+  await new Promise((resolve, reject) => {
+    server.once('listening', resolve)
+    server.once('error', reject)
   })
   return server
 }

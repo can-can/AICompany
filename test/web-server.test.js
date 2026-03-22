@@ -46,7 +46,7 @@ async function request(server, path, method = 'GET', jsonBody) {
 
 test('GET /api/projects returns all projects', async (t) => {
   const store = makeProjectStore([makeProject('Alpha'), makeProject('Beta')])
-  const server = createWebServer(store, { port: 0 })
+  const server = await createWebServer(store, { port: 0 })
   t.after(() => new Promise(r => server.close(r)))
 
   const { status, body } = await request(server, '/api/projects')
@@ -57,7 +57,7 @@ test('GET /api/projects returns all projects', async (t) => {
 
 test('GET /api/status?project=Alpha returns roles for that project', async (t) => {
   const store = makeProjectStore([makeProject('Alpha')])
-  const server = createWebServer(store, { port: 0 })
+  const server = await createWebServer(store, { port: 0 })
   t.after(() => new Promise(r => server.close(r)))
 
   const { status, body } = await request(server, '/api/status?project=Alpha')
@@ -69,7 +69,7 @@ test('GET /api/status?project=Alpha returns roles for that project', async (t) =
 
 test('GET /api/status without project returns 400', async (t) => {
   const store = makeProjectStore([makeProject('Alpha')])
-  const server = createWebServer(store, { port: 0 })
+  const server = await createWebServer(store, { port: 0 })
   t.after(() => new Promise(r => server.close(r)))
 
   const { status } = await request(server, '/api/status')
@@ -78,7 +78,7 @@ test('GET /api/status without project returns 400', async (t) => {
 
 test('GET /api/status for unknown project returns 404', async (t) => {
   const store = makeProjectStore([makeProject('Alpha')])
-  const server = createWebServer(store, { port: 0 })
+  const server = await createWebServer(store, { port: 0 })
   t.after(() => new Promise(r => server.close(r)))
 
   const { status } = await request(server, '/api/status?project=Unknown')
@@ -88,7 +88,7 @@ test('GET /api/status for unknown project returns 404', async (t) => {
 test('GET /api/status for offline project returns 503', async (t) => {
   const offlineProject = { ...makeProject('Offline'), status: 'offline' }
   const store = makeProjectStore([offlineProject])
-  const server = createWebServer(store, { port: 0 })
+  const server = await createWebServer(store, { port: 0 })
   t.after(() => new Promise(r => server.close(r)))
 
   const { status } = await request(server, '/api/status?project=Offline')
@@ -97,7 +97,7 @@ test('GET /api/status for offline project returns 503', async (t) => {
 
 test('GET /api/tasks?project=Alpha returns tasks', async (t) => {
   const store = makeProjectStore([makeProject('Alpha')])
-  const server = createWebServer(store, { port: 0 })
+  const server = await createWebServer(store, { port: 0 })
   t.after(() => new Promise(r => server.close(r)))
 
   const { status, body } = await request(server, '/api/tasks?project=Alpha')
@@ -108,7 +108,7 @@ test('GET /api/tasks?project=Alpha returns tasks', async (t) => {
 
 test('GET /api/logs?project=Alpha returns logs', async (t) => {
   const store = makeProjectStore([makeProject('Alpha')])
-  const server = createWebServer(store, { port: 0 })
+  const server = await createWebServer(store, { port: 0 })
   t.after(() => new Promise(r => server.close(r)))
 
   const { status, body } = await request(server, '/api/logs?project=Alpha')
@@ -122,7 +122,7 @@ test('GET /api/logs?limit=1 returns at most 1 entry', async (t) => {
   // makeProject already added 1 log entry; add a second so limit is meaningful
   proj.logger.add('info', 'pm', 'second log for Alpha')
   const store = makeProjectStore([proj])
-  const server = createWebServer(store, { port: 0 })
+  const server = await createWebServer(store, { port: 0 })
   t.after(() => new Promise(r => server.close(r)))
 
   const { status, body } = await request(server, '/api/logs?project=Alpha&limit=1')
@@ -132,7 +132,7 @@ test('GET /api/logs?limit=1 returns at most 1 entry', async (t) => {
 
 test('POST /api/send?project=Alpha delivers message to role', async (t) => {
   const store = makeProjectStore([makeProject('Alpha')])
-  const server = createWebServer(store, { port: 0 })
+  const server = await createWebServer(store, { port: 0 })
   t.after(() => new Promise(r => server.close(r)))
 
   const { status, body } = await request(server, '/api/send?project=Alpha', 'POST', { role: 'engineer', message: 'hello' })
@@ -142,7 +142,7 @@ test('POST /api/send?project=Alpha delivers message to role', async (t) => {
 
 test('POST /api/send without role returns 400', async (t) => {
   const store = makeProjectStore([makeProject('Alpha')])
-  const server = createWebServer(store, { port: 0 })
+  const server = await createWebServer(store, { port: 0 })
   t.after(() => new Promise(r => server.close(r)))
 
   const { status } = await request(server, '/api/send?project=Alpha', 'POST', { message: 'hello' })
@@ -151,7 +151,7 @@ test('POST /api/send without role returns 400', async (t) => {
 
 test('POST /api/send with unknown role returns 400', async (t) => {
   const store = makeProjectStore([makeProject('Alpha')])
-  const server = createWebServer(store, { port: 0 })
+  const server = await createWebServer(store, { port: 0 })
   t.after(() => new Promise(r => server.close(r)))
 
   const { status } = await request(server, '/api/send?project=Alpha', 'POST', { role: 'unknown', message: 'hello' })
@@ -174,7 +174,7 @@ test('POST /api/next-id?project=Alpha returns reserved ID', async (t) => {
     getProject: (name) => name === 'Alpha' ? { ...proj, path: tmpProjectDir, status: 'active' } : null
   }
 
-  const server = createWebServer(store, { port: 0 })
+  const server = await createWebServer(store, { port: 0 })
   t.after(() => new Promise(r => server.close(r)))
 
   const { status, body } = await request(server, '/api/next-id?project=Alpha', 'POST')

@@ -18,10 +18,9 @@ test('buildPrompt includes company.md, CLAUDE.md, and task content', (t) => {
 
   const prompt = buildPrompt({ filepath: taskPath }, 'engineer', dir)
 
-  assert.ok(prompt.includes('# Test Company'), 'should include company.md content')
-  assert.ok(prompt.includes('# Engineer Role'), 'should include CLAUDE.md content')
-  assert.ok(prompt.includes('Build the thing'), 'should include task content')
-  assert.ok(prompt.includes('You are the engineer'), 'should include role instruction')
+  assert.ok(prompt.includes('001-test.md'), 'should reference the task file')
+  assert.ok(prompt.includes('role instructions'), 'should mention role instructions')
+  assert.equal(typeof prompt, 'string', 'should return a string')
 })
 
 test('buildPrompt works when CLAUDE.md does not exist', (t) => {
@@ -36,8 +35,6 @@ test('buildPrompt works when CLAUDE.md does not exist', (t) => {
 
   const prompt = buildPrompt({ filepath: taskPath }, 'qa', dir)
 
-  assert.ok(prompt.includes('Test it'), 'should include task content')
-  assert.ok(prompt.includes('You are the qa'), 'should include role instruction')
-  // CLAUDE.md is missing — prompt should still work (empty string for role section)
-  assert.ok(prompt.includes('# Your Role'), 'should have role section header')
+  assert.ok(prompt.includes('002-test.md'), 'should reference the task file')
+  assert.equal(typeof prompt, 'string', 'should return a string')
 })

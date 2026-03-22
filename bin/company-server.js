@@ -157,7 +157,7 @@ async function main() {
     }
   })
 
-  const webServer = createWebServer(projectStore, { port: 4000 })
+  const webServer = await createWebServer(projectStore, { port: 4000 })
 
   writeFileSync(pidPath, String(process.pid))
   console.log(`AI Company hub running — dashboard: http://localhost:4000`)
