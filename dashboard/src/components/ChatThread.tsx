@@ -12,6 +12,7 @@ import { useAICompanyData, useAICompanyRuntime } from '../lib/useAICompanyRuntim
 import MarkdownText from './MarkdownText'
 import ToolCallUI from './ToolCallUI'
 import CollapsibleMessage from './CollapsibleMessage'
+import SlashCommandMenu, { useSlashCommands } from './SlashCommandMenu'
 
 const statusLabels: Record<string, string> = {
   working: 'Agent is working...',
@@ -51,13 +52,43 @@ function AssistantMessage() {
   )
 }
 
-function Composer() {
+function Composer({ project, role, onClearMessages }: { project: string; role: string; onClearMessages: () => void }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const onExecute = useCallback((command: string) => {
+    switch (command) {
+      case 'stop':
+        stopAgent(project, role)
+        break
+      case 'clear':
+        onClearMessages()
+        break
+      case 'help':
+        break
+    }
+  }, [project, role, onClearMessages])
+
+  const { menuOpen, filtered, selectedIndex, setSelectedIndex, handleInput, handleKeyDown, execute } = useSlashCommands(textareaRef, onExecute)
+
   return (
-    <ComposerPrimitive.Root className="flex items-end gap-2 border-t border-gray-200 bg-white px-4 py-3">
+    <ComposerPrimitive.Root className="relative flex items-end gap-2 border-t border-gray-200 bg-white px-4 py-3">
+      {menuOpen && (
+        <SlashCommandMenu
+          commands={filtered}
+          selectedIndex={selectedIndex}
+          onSelect={(value) => {
+            execute(value)
+          }}
+          onHover={setSelectedIndex}
+        />
+      )}
       <ComposerPrimitive.Input
+        ref={textareaRef}
         placeholder="Type a message..."
         className="flex-1 resize-none rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
         autoFocus
+        onInput={handleInput}
+        onKeyDown={handleKeyDown}
       />
       <ComposerPrimitive.Send
         className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -121,6 +152,7 @@ function ChatThreadInner({
   projectStatus,
   hasMore,
   loadMore,
+  onClearMessages,
 }: {
   project: string
   role: string
@@ -129,6 +161,7 @@ function ChatThreadInner({
   projectStatus: ProjectStatus | null
   hasMore: boolean
   loadMore: () => Promise<void>
+  onClearMessages: () => void
 }) {
   const { runtime } = useAICompanyRuntime(project, role, messages, roleStatus, projectStatus)
   const [stopping, setStopping] = useState(false)
@@ -187,7 +220,7 @@ function ChatThreadInner({
             </ThreadPrimitive.Messages>
           </ThreadPrimitive.Viewport>
         </div>
-        <Composer />
+        <Composer project={project} role={role} onClearMessages={onClearMessages} />
       </AssistantRuntimeProvider>
       {roleStatus && (roleStatus.state === 'working' || roleStatus.state === 'ready') && (
         <div className="flex items-center justify-center gap-3 px-4 py-2 text-sm text-gray-500 bg-gray-50 border-t border-gray-200">
@@ -208,11 +241,15 @@ function ChatThreadInner({
 }
 
 export default function ChatThread({ project, role, onStatusChange }: { project: string; role: string; onStatusChange?: (status: ProjectStatus | null) => void }) {
-  const { messages, roleStatus, projectStatus, hasMore, loadMore, initialLoaded } = useAICompanyData(project, role)
+  const { messages, setMessages, roleStatus, projectStatus, hasMore, loadMore, initialLoaded } = useAICompanyData(project, role)
 
   useEffect(() => {
     onStatusChange?.(projectStatus)
   }, [projectStatus, onStatusChange])
+
+  const handleClearMessages = useCallback(() => {
+    setMessages([])
+  }, [setMessages])
 
   if (!initialLoaded) {
     return (
@@ -233,6 +270,7 @@ export default function ChatThread({ project, role, onStatusChange }: { project:
         projectStatus={projectStatus}
         hasMore={hasMore}
         loadMore={loadMore}
+        onClearMessages={handleClearMessages}
       />
     </div>
   )
