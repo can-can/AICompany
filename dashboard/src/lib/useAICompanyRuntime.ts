@@ -87,6 +87,9 @@ export function convertMessage(entry: ConversationMessage, _index: number): Thre
   }
 }
 
+// Module-level cache survives component unmount/remount (key={role} on ChatThread)
+const messageCache: Record<string, ConversationMessage[]> = {}
+
 /**
  * Manages data loading (messages, SSE, polling) separately from the runtime.
  * Returns data + setters so a child component can create the runtime after initial load.
@@ -99,13 +102,34 @@ export function useAICompanyData(project: string, role: string) {
   const [initialLoaded, setInitialLoaded] = useState(false)
   const oldestRestIdRef = useRef<string | null>(null)
 
+  const messagesRef = useRef(messages)
+  messagesRef.current = messages
+
   // Load initial page of messages
   useEffect(() => {
+    const cacheKey = `${project}/${role}`
+
+    // Restore from cache or reset
+    const cached = messageCache[cacheKey]
+    if (cached && cached.length > 0) {
+      setMessages(cached)
+      setInitialLoaded(true)
+    } else {
+      setMessages([])
+      setInitialLoaded(false)
+    }
+
     let cancelled = false
     async function load() {
       const page = await fetchConversation(project, role)
       if (cancelled) return
-      setMessages(page.messages)
+      setMessages(prev => {
+        // Merge: use fetch result as base, append any SSE messages not in fetch
+        const fetchIds = new Set(page.messages.map(m => m.id))
+        const fetchTexts = new Set(page.messages.map(m => `${m.role}:${m.text ?? ''}`))
+        const extras = prev.filter(m => !fetchIds.has(m.id) && !fetchTexts.has(`${m.role}:${m.text ?? ''}`))
+        return [...page.messages, ...extras]
+      })
       setHasMore(page.hasMore)
       setInitialLoaded(true)
       if (page.messages.length > 0) {
@@ -113,7 +137,11 @@ export function useAICompanyData(project: string, role: string) {
       }
     }
     load()
-    return () => { cancelled = true }
+    return () => {
+      // Cache messages for this role before switching
+      messageCache[cacheKey] = messagesRef.current
+      cancelled = true
+    }
   }, [project, role])
 
   // SSE subscription for real-time messages and state updates

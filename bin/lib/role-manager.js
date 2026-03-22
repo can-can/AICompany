@@ -29,6 +29,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
       lastMessages: [],   // last assistant messages from SDK (shown on dashboard)
       inputQueue: [],      // human messages queued while agent is busy
       abortController: null, // AbortController for current SDK call
+      activeQuery: null,     // SDK Query object for clean cancellation
     }
   }
 
@@ -71,6 +72,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
               prompt: humanMsg,
               onMessage: (msg) => emitter.emit('message', { role, ...msg }),
               abortController: runner.abortController,
+              onQuery: (q) => { runner.activeQuery = q },
             }), SDK_TIMEOUT_MS)
             setSessionId(role, result?.sessionId)
             if (result?.messages?.length) {
@@ -81,6 +83,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
           } finally {
             runner.sdkInFlight = false
             runner.abortController = null
+            runner.activeQuery = null
             runner.state = 'ready'
             runner.currentTask = readTaskFile(fresh.filepath) ?? { ...fresh, status: 'done' }
             scheduleDispatch(role)
@@ -108,6 +111,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
             prompt: humanMsg,
             onMessage: (msg) => emitter.emit('message', { role, ...msg }),
             abortController: runner.abortController,
+            onQuery: (q) => { runner.activeQuery = q },
           }), SDK_TIMEOUT_MS)
           setSessionId(role, result?.sessionId)
           if (result?.messages?.length) runner.lastMessages = result.messages
@@ -116,6 +120,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
         } finally {
           runner.sdkInFlight = false
           runner.abortController = null
+          runner.activeQuery = null
           runner.state = 'ready'
           runner.currentTask = null
           scheduleDispatch(role)
@@ -138,6 +143,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
       const result = await withTimeout(sdkRunner(next, role, runner.sessionId, {
         onMessage: (msg) => emitter.emit('message', { role, ...msg }),
         abortController: runner.abortController,
+        onQuery: (q) => { runner.activeQuery = q },
       }), SDK_TIMEOUT_MS)
       setSessionId(role, result?.sessionId)
       if (result?.messages?.length) {
@@ -148,6 +154,7 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
     } finally {
       runner.sdkInFlight = false
       runner.abortController = null
+      runner.activeQuery = null
       runner.state = 'ready'                 // transient ready state visible to dashboard
       runner.currentTask = readTaskFile(next.filepath) ?? { ...next, status: 'done' }
       scheduleDispatch(role)
@@ -295,9 +302,15 @@ export function createRoleManager(roles, sdkRunner, readTaskFile, logger) {
   function stopAgent(role) {
     const runner = getRunner(role)
     if (!runner.sdkInFlight) return false
+    // Clear queued input so the agent doesn't immediately restart after abort
+    runner.inputQueue.length = 0
+    if (runner.activeQuery) {
+      runner.activeQuery.close()
+      logger.add('info', role, 'agent stopped by user (query.close)')
+    }
     if (runner.abortController) {
       runner.abortController.abort()
-      logger.add('info', role, 'agent stopped by user')
+      logger.add('info', role, 'agent stopped by user (abort)')
     }
     return true
   }

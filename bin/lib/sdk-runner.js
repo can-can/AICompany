@@ -24,7 +24,7 @@ export function buildPrompt(task, role, projectDir) {
 }
 
 export function createSdkRunner(projectDir, sessionsPath) {
-  async function runAgent(task, role, sessionId, { prompt: overridePrompt, onMessage, abortController } = {}) {
+  async function runAgent(task, role, sessionId, { prompt: overridePrompt, onMessage, abortController, onQuery } = {}) {
     // Dynamic import to avoid top-level SDK load errors if not configured
     const { query } = await import('@anthropic-ai/claude-agent-sdk')
 
@@ -41,7 +41,10 @@ export function createSdkRunner(projectDir, sessionsPath) {
     let resultStatus = 'unknown'
     const messages = []
 
-    for await (const event of query({ prompt, options })) {
+    const q = query({ prompt, options })
+    onQuery?.(q)
+
+    for await (const event of q) {
       if (event.type === 'result') {
         lastSessionId = event.session_id ?? lastSessionId
         resultStatus = event.subtype ?? 'done'

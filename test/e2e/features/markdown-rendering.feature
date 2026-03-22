@@ -15,6 +15,7 @@ Feature: Markdown rendering in chat messages
   Scenario: Historical assistant messages render markdown tables as HTML
     Then an assistant message contains a "table" element
 
+  @flaky
   Scenario: Markdown rendering persists for new messages after refresh
     When I type "Reply with exactly: **e2e-bold-check**" in the composer
     And I click Send

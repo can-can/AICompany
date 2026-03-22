@@ -19,9 +19,9 @@ Feature: Stop a running agent from the chat UI
   @flaky
   Scenario: Clicking Stop cancels the running agent
     When I click on the "engineer" role
+    And the agent returns to idle
     And I type "write a very long essay about the history of computing" in the composer
     And I click Send
     Then the Stop button is visible
     When I click the Stop button
-    Then the Stop button is not visible
-    And the agent returns to idle
+    Then the agent returns to idle

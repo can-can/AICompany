@@ -165,22 +165,24 @@ Then('the long message is visually expanded', async function () {
 Then('the chat is scrolled to the bottom', async function () {
   const container = this.page.locator('.flex-1.overflow-y-auto')
   await expect(container).toBeVisible()
-  // Allow a brief moment for smooth scroll to finish
-  await this.page.waitForTimeout(500)
-  const isAtBottom = await container.evaluate(el => {
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 50
-  })
-  expect(isAtBottom).toBe(true)
+  // Retry to account for requestAnimationFrame + SSE delay
+  await expect(async () => {
+    const isAtBottom = await container.evaluate(el => {
+      return el.scrollHeight - el.scrollTop - el.clientHeight < 50
+    })
+    expect(isAtBottom).toBe(true)
+  }).toPass({ timeout: 5000 })
 })
 
 Then('the chat is not scrolled to the bottom', async function () {
   const container = this.page.locator('.flex-1.overflow-y-auto')
   await expect(container).toBeVisible()
-  await this.page.waitForTimeout(500)
-  const isAtBottom = await container.evaluate(el => {
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 50
-  })
-  expect(isAtBottom).toBe(false)
+  await expect(async () => {
+    const isAtBottom = await container.evaluate(el => {
+      return el.scrollHeight - el.scrollTop - el.clientHeight < 50
+    })
+    expect(isAtBottom).toBe(false)
+  }).toPass({ timeout: 5000 })
 })
 
 When('I scroll to the top of the chat', async function () {
