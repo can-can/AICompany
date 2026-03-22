@@ -12,6 +12,7 @@
     "@assistant-ui/react": "^0.12.17",
     "@assistant-ui/react-markdown": "^0.12.6",
     "@tailwindcss/typography": "^0.5.19",
+    "cmdk": "^1.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",

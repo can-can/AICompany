@@ -3,6 +3,7 @@ Feature: View task details and change status
   Background:
     Given the dashboard is open
     And I navigate to the "test-company" project
+    And I click the "Show done" button in the tasks section
 
   Scenario: Click task row navigates to detail view
     When I click on task "001" in the task table

@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { TaskItem } from '../lib/api'
 
@@ -8,11 +9,36 @@ const badgeColor: Record<string, string> = {
   rejected: 'bg-red-50 text-red-700',
 }
 
+const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 }
+
 export default function TaskTable({ tasks, project }: { tasks: TaskItem[]; project: string }) {
   const navigate = useNavigate()
+  const [showDone, setShowDone] = useState(false)
+
+  const sorted = useMemo(() => {
+    const filtered = showDone ? tasks : tasks.filter(t => t.status !== 'done')
+    return [...filtered].sort((a, b) => {
+      const pa = priorityOrder[a.priority] ?? 3
+      const pb = priorityOrder[b.priority] ?? 3
+      if (pa !== pb) return pa - pb
+      return (b.created ?? '').localeCompare(a.created ?? '')
+    })
+  }, [tasks, showDone])
+
+  const doneCount = tasks.filter(t => t.status === 'done').length
 
   return (
     <div className="overflow-x-auto">
+      {doneCount > 0 && (
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={() => setShowDone(v => !v)}
+            className="text-xs text-gray-500 hover:text-gray-700"
+          >
+            {showDone ? 'Hide done' : `Show done (${doneCount})`}
+          </button>
+        </div>
+      )}
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-200 text-left text-gray-500 font-medium">
@@ -26,7 +52,7 @@ export default function TaskTable({ tasks, project }: { tasks: TaskItem[]; proje
           </tr>
         </thead>
         <tbody>
-          {tasks.map((t) => (
+          {sorted.map((t) => (
             <tr
               key={t.id}
               onClick={() => navigate(`/${encodeURIComponent(project)}/task/${t.id}`)}

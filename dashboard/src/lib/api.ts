@@ -24,6 +24,8 @@ export type TaskItem = {
   owner: string
   status: string
   priority: string
+  created: string
+  updated: string
 }
 
 export type TaskDetail = TaskItem & {
