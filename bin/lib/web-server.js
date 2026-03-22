@@ -2,7 +2,7 @@ import express from 'express'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getNextId, buildTaskList, readTaskFileWithBody, updateTaskStatus } from './task-parser.js'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -104,6 +104,74 @@ export function createWebServer(projectStore, { port = 4000 } = {}) {
       res.status(400).json({ error: err.message })
     }
   })
+
+  // --- Memory management ---
+
+  const ALLOWED_MEMORY_PATTERNS = [
+    /^company\.md$/,
+    /^roles\/[a-zA-Z0-9_-]+\/CLAUDE\.md$/,
+    /^roles\/[a-zA-Z0-9_-]+\/memory\.md$/,
+  ]
+
+  function isAllowedMemoryPath(p) {
+    if (p.includes('..')) return false
+    return ALLOWED_MEMORY_PATTERNS.some(re => re.test(p))
+  }
+
+  app.get('/api/memory', (req, res) => {
+    const project = requireProject(req, res)
+    if (!project) return
+    const files = []
+    const root = project.path
+
+    // company.md
+    const companyPath = join(root, 'company.md')
+    if (existsSync(companyPath)) {
+      files.push({ path: 'company.md', content: readFileSync(companyPath, 'utf-8') })
+    }
+
+    // roles/*/CLAUDE.md and roles/*/memory.md
+    const rolesDir = join(root, 'roles')
+    if (existsSync(rolesDir)) {
+      for (const role of readdirSync(rolesDir, { withFileTypes: true })) {
+        if (!role.isDirectory()) continue
+        for (const filename of ['CLAUDE.md', 'memory.md']) {
+          const filePath = join(rolesDir, role.name, filename)
+          if (existsSync(filePath)) {
+            files.push({
+              path: `roles/${role.name}/${filename}`,
+              content: readFileSync(filePath, 'utf-8'),
+            })
+          }
+        }
+      }
+    }
+
+    res.json({ files })
+  })
+
+  app.put('/api/memory', (req, res) => {
+    const project = requireProject(req, res)
+    if (!project) return
+    const { path: filePath, content } = req.body ?? {}
+    if (!filePath || typeof content !== 'string') {
+      res.status(400).json({ error: 'path and content are required' })
+      return
+    }
+    if (!isAllowedMemoryPath(filePath)) {
+      res.status(400).json({ error: 'invalid memory file path' })
+      return
+    }
+    try {
+      const fullPath = join(project.path, filePath)
+      writeFileSync(fullPath, content, 'utf-8')
+      res.json({ ok: true })
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+  })
+
+  // --- Tasks ---
 
   app.get('/api/task', (req, res) => {
     const project = requireProject(req, res)

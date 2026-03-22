@@ -3,6 +3,7 @@ import ProjectListView from './views/ProjectListView'
 import DashboardView from './views/DashboardView'
 import ChatView from './views/ChatView'
 import TaskDetailView from './views/TaskDetailView'
+import MemoryView from './views/MemoryView'
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
       <Route path="/:project" element={<DashboardView />} />
       <Route path="/:project/chat/:role" element={<ChatView />} />
       <Route path="/:project/task/:taskId" element={<TaskDetailView />} />
+      <Route path="/:project/memory" element={<MemoryView />} />
     </Routes>
   )
 }

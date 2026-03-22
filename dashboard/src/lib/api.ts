@@ -102,6 +102,29 @@ export async function clearConversation(project: string, role: string): Promise<
   return data
 }
 
+export type MemoryFile = {
+  path: string
+  content: string
+}
+
+export async function fetchMemoryFiles(project: string): Promise<MemoryFile[]> {
+  const res = await fetch(`/api/memory?project=${encodeURIComponent(project)}`)
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.files
+}
+
+export async function saveMemoryFile(project: string, path: string, content: string): Promise<{ ok: boolean }> {
+  const res = await fetch(`/api/memory?project=${encodeURIComponent(project)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, content }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to save')
+  return data
+}
+
 export async function updateTaskStatus(project: string, id: string, status: string): Promise<{ ok: boolean }> {
   const res = await fetch(`/api/task/status?project=${encodeURIComponent(project)}`, {
     method: 'PATCH',

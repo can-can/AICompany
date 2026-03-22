@@ -37,6 +37,12 @@ export default function DashboardView() {
         <Link to="/" className="text-gray-400 hover:text-gray-600 text-sm">All Projects</Link>
         <span className="text-gray-300">/</span>
         <h1 className="text-lg font-semibold text-gray-900">{project}</h1>
+        <Link
+          to={`/${encodeURIComponent(project!)}/memory`}
+          className="ml-auto text-sm text-gray-500 hover:text-gray-700"
+        >
+          Memory
+        </Link>
       </header>
 
       <main className="max-w-5xl mx-auto p-6 space-y-8">
