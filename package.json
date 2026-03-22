@@ -2,6 +2,12 @@
   "name": "ai-company",
   "version": "1.0.0",
   "description": "Multi-agent AI coordination framework — global hub managing multiple isolated projects",
+  "license": "MIT",
+  "author": "CanCan",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Can-Can/AICompany.git"
+  },
   "type": "module",
   "bin": {
     "ai-company": "bin/ai-company.js"
